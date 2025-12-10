@@ -150,6 +150,7 @@ class JarvisUI:
         self.stop_flag = False # New Flag: Forces halts
         self.current_turn_id = 0
         self.msg_queue = queue.Queue()
+        self.speech_queue = queue.Queue() # New: For streaming TTS
         self.current_chat_file = None
         
         self.setup_ui()
@@ -159,6 +160,7 @@ class JarvisUI:
         if not self.current_chat_file: self.new_chat()
         
         threading.Thread(target=self.load_ai, daemon=True).start()
+        threading.Thread(target=self.speech_process, daemon=True).start() # New: Speech Worker
         self.root.after(100, self.process_queue)
 
     def setup_ui(self):
@@ -232,6 +234,10 @@ class JarvisUI:
         self.is_busy = False
         self.toggle_busy(False)
         sd.stop() # Kill Audio
+        
+        # Clear Queues
+        with self.speech_queue.mutex: self.speech_queue.queue.clear()
+        with self.msg_queue.mutex: self.msg_queue.queue.clear()
 
     def toggle_busy(self, is_busy):
         """Locks UI during tasks"""
@@ -290,7 +296,14 @@ class JarvisUI:
     def add_to_ui(self, role, text):
         self.chat_area.config(state='normal')
         tags = {"user": "user", "jarvis": "jarvis", "tool": "tool", "system": "system"}
-        self.chat_area.insert(tk.END, f"\n{'> ' if role=='user' else ''}{text}\n", tags.get(role, "system"))
+        
+        if role == "jarvis_partial":
+            # Stream directly to end
+            self.chat_area.insert(tk.END, text, "jarvis")
+        else:
+            # Standard message block
+            self.chat_area.insert(tk.END, f"\n{'> ' if role=='user' else ''}{text}\n", tags.get(role, "system"))
+            
         self.chat_area.see(tk.END)
         self.chat_area.config(state='disabled')
 
@@ -300,7 +313,7 @@ class JarvisUI:
                 role, text = self.msg_queue.get_nowait()
                 self.add_to_ui(role, text)
         except queue.Empty: pass
-        self.root.after(100, self.process_queue)
+        self.root.after(50, self.process_queue) # Faster refresh for streaming
 
     def send_text(self, event=None):
         if self.is_busy: return # Block input if busy
@@ -406,22 +419,83 @@ class JarvisUI:
         # Loop back to Engineer Brain
         self.run_tool_loop(source, turn_id)
 
+    def speech_process(self):
+        """Dedicated Speech Worker to prevent blocking"""
+        while True:
+            text = self.speech_queue.get()
+            if text is None: break # Sentinel
+            
+            # Check Stop Flag before and during
+            if self.stop_flag: 
+                self.speech_queue.task_done()
+                continue
+                
+            self.speak(text)
+            self.speech_queue.task_done()
+
     def generate_final_response(self, source, turn_id):
-        """The Jarvis Brain Speak"""
+        """The Jarvis Brain Speak - NOW WITH STREAMING"""
         if turn_id != self.current_turn_id or self.stop_flag: return
         
-        payload = {"messages": self.chat_history, "temperature": 0.7, "max_tokens": -1}
+        payload = {"messages": self.chat_history, "temperature": 0.7, "max_tokens": -1, "stream": True}
+        
+        full_response = ""
+        sentence_buffer = ""
+        
         try:
-            res = requests.post(LM_STUDIO_URL, json=payload).json()
-            text = res['choices'][0]['message']['content']
-            
-            if self.stop_flag: return
+            # We use stream=True and iterate lines
+            with requests.post(LM_STUDIO_URL, json=payload, stream=True) as response:
+                if response.status_code != 200: 
+                    self.log_system(f"API Error: {response.status_code}")
+                    return
 
-            self.chat_history.append({"role": "assistant", "content": text})
-            self.msg_queue.put(("jarvis", text))
-            self.save_memory()
+                # Send initial assistant role to chat history (will append content later)
+                # Actually, we'll append the full message at the end to keep history clean.
+                
+                for line in response.iter_lines():
+                    if self.stop_flag or turn_id != self.current_turn_id: 
+                        self.log_system(" Stream Aborted.")
+                        break
+                        
+                    if line:
+                        decoded = line.decode('utf-8').strip()
+                        if decoded.startswith("data: "):
+                            json_str = decoded[6:] # Strip "data: "
+                            if json_str == "[DONE]": break
+                            
+                            try:
+                                chunk = json.loads(json_str)
+                                delta = chunk['choices'][0]['delta'].get('content', '')
+                                if delta:
+                                    full_response += delta
+                                    sentence_buffer += delta
+                                    
+                                    # 1. Update UI Real-time
+                                    self.msg_queue.put(("jarvis_partial", delta))
+                                    
+                                    # 2. Check for Sentence Endings for TTS
+                                    if source == "voice" and re.search(r'[.!?\n]', delta):
+                                        # Split buffer into sentences
+                                        sentences = re.split(r'(?<=[.!?])\s+', sentence_buffer)
+                                        
+                                        # Queue all complete sentences
+                                        for s in sentences[:-1]:
+                                            if s.strip(): self.speech_queue.put(s.strip())
+                                        
+                                        # Keep the incomplete part
+                                        sentence_buffer = sentences[-1]
+
+                            except: pass
+                
+                # Flush remaining buffer
+                if source == "voice" and sentence_buffer.strip() and not self.stop_flag:
+                    self.speech_queue.put(sentence_buffer.strip())
+
+            if not self.stop_flag:
+                self.chat_history.append({"role": "assistant", "content": full_response})
+                self.save_memory()
+                # self.speak(full_response) <- No longer needed, handled by stream
             
-            if source == "voice": self.speak(text)
         except Exception as e:
             self.log_system(f"Jarvis Error: {e}")
 
