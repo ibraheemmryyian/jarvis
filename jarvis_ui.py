@@ -16,6 +16,9 @@ from vosk import Model, KaldiRecognizer
 from kokoro_onnx import Kokoro
 from langdetect import detect
 from duckduckgo_search import DDGS 
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import simpleSplit
 
 # --- Configuration ---
 WAKE_WORDS = ["hey jarvis", "hey bitch", "jarvis", "wake up"]
@@ -86,9 +89,32 @@ class JarvisTools:
     @staticmethod
     def write_file(filename, content):
         try:
-            with open(os.path.join(WORKSPACE_DIR, filename), "w", encoding="utf-8") as f:
-                f.write(content)
-            return f"File '{filename}' saved."
+            path = os.path.join(WORKSPACE_DIR, filename)
+            if filename.lower().endswith(".pdf"):
+                c = canvas.Canvas(path, pagesize=letter)
+                width, height = letter
+                text_object = c.beginText(40, height - 40)
+                text_object.setFont("Helvetica", 10)
+                
+                # Simple text wrapping
+                lines = content.split('\n')
+                for line in lines:
+                    wrapped_lines = simpleSplit(line, "Helvetica", 10, width - 80)
+                    for wrapped in wrapped_lines:
+                        if text_object.getY() < 40: # Page break
+                            c.drawText(text_object)
+                            c.showPage()
+                            text_object = c.beginText(40, height - 40)
+                            text_object.setFont("Helvetica", 10)
+                        text_object.textLine(wrapped)
+                
+                c.drawText(text_object)
+                c.save()
+                return f"PDF '{filename}' saved."
+            else:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                return f"File '{filename}' saved."
         except Exception as e: return f"Error: {e}"
 
     @staticmethod

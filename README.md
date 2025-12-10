@@ -56,7 +56,7 @@ You need to place these files in the root `jarvis` folder:
 1.  **Install Python 3.10+**: [python.org](https://www.python.org/downloads/)
 2.  **Install Libraries**:
     ```powershell
-    pip install duckduckgo-search sounddevice scipy vosk kokoro-onnx langdetect requests
+    pip install duckduckgo-search sounddevice scipy vosk kokoro-onnx langdetect requests reportlab
     ```
 3.  **Verify File Structure**:
     ```text
