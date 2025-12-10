@@ -74,15 +74,16 @@ TOOL_PROMPT = {
         "Available Tools:\n"
         "1. search_web(query): Search internet for facts.\n"
         "2. write_file(filename, content): Save content to file. Use \\n for newlines.\n"
-        "3. read_file(filename): Read text from a file.\n"
-        "4. list_files(): List files in workspace.\n"
+        "3. read_file(filename): Read text from a file. Accepts ABSOLUTE paths (e.g. 'C:/Users/file.txt') or relative.\n"
+        "4. list_files(path): List files. Default is workspace. You can pass 'C:/' or any folder path.\n"
         "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data.\n"
         "6. read_clipboard(): Read text currently copied to your clipboard. Use this if user says 'summarize this' or 'look at what I copied'.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY: 1. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
-        "2. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
-        "3. DO NOT just say 'file exists'. The user is complaining it is empty. FIX IT.\n"
-        "4. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
+        "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
+        "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
+        "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
+        "4. DO NOT just say 'file exists'. The user is complaining it is empty. FIX IT.\n"
+        "5. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
     )
 }
 
@@ -129,15 +130,22 @@ class JarvisTools:
     @staticmethod
     def read_file(filename):
         try:
-            path = os.path.join(WORKSPACE_DIR, filename)
-            if not os.path.exists(path): return "File not found."
-            with open(path, "r", encoding="utf-8") as f: return f.read()
+            # Check if absolute path (outside workspace)
+            if os.path.isabs(filename):
+                if not os.path.exists(filename): return "File not found."
+                with open(filename, "r", encoding="utf-8") as f: return f.read()
+            else:
+                # Default to Workspace
+                path = os.path.join(WORKSPACE_DIR, filename)
+                if not os.path.exists(path): return "File not found."
+                with open(path, "r", encoding="utf-8") as f: return f.read()
         except Exception as e: return f"Error: {e}"
 
     @staticmethod
-    def list_files():
+    def list_files(path=None):
         try:
-            return str(os.listdir(WORKSPACE_DIR))
+            target = path if path else WORKSPACE_DIR
+            return str(os.listdir(target))
         except Exception as e: return f"Error: {e}"
 
     @staticmethod
@@ -441,7 +449,7 @@ class JarvisUI:
         if name == "search_web": result = JarvisTools.search_web(args.get("query", ""))
         elif name == "write_file": result = JarvisTools.write_file(args.get("filename"), args.get("content"))
         elif name == "read_file": result = JarvisTools.read_file(args.get("filename"))
-        elif name == "list_files": result = JarvisTools.list_files()
+        elif name == "list_files": result = JarvisTools.list_files(args.get("path"))
         elif name == "deep_research": result = JarvisTools.deep_research(args.get("topic"))
         elif name == "read_clipboard": result = JarvisTools.read_clipboard()
         
