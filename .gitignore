@@ -1,0 +1,15 @@
+# Models (Too large for git)
+*.bin
+*.onnx
+model/
+
+# Temporary Files
+*.wav
+__pycache__/
+
+# Binaries/Executables (User-specific)
+*.exe
+*.dll
+
+# Logs
+*.log
