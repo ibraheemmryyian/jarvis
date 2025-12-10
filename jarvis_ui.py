@@ -76,6 +76,7 @@ TOOL_PROMPT = {
         "2. write_file(filename, content): Save content to file. Use \\n for newlines.\n"
         "3. read_file(filename): Read text from a file.\n"
         "4. list_files(): List files in workspace.\n"
+        "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data. Use this for 'research', 'learn about', or 'write a paper' requests.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
         "STRATEGY: 1. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
         "2. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
@@ -137,6 +138,27 @@ class JarvisTools:
         try:
             return str(os.listdir(WORKSPACE_DIR))
         except Exception as e: return f"Error: {e}"
+
+    @staticmethod
+    def deep_research(topic):
+        """Runs a multi-phase research loop found on Arxiv and Web"""
+        try:
+            aggregated = f"--- RESEARCH REPORT: {topic} ---\n"
+            
+            # Phase 1: General Overview
+            results = list(DDGS().text(f"overview {topic}", max_results=3))
+            aggregated += "\n[OVERVIEW]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            
+            # Phase 2: Academic/PDF Sources
+            results = list(DDGS().text(f"filetype:pdf site:arxiv.org OR site:edu {topic}", max_results=3))
+            aggregated += "\n\n[ACADEMIC SOURCES]\n" + "\n".join([f"- {r['title']} (URL: {r['href']}): {r['body']}" for r in results])
+            
+            # Phase 3: Statistics/Data
+            results = list(DDGS().text(f"statistics data {topic}", max_results=3))
+            aggregated += "\n\n[KEY DATA]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            
+            return aggregated
+        except Exception as e: return f"Research Error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
@@ -413,6 +435,7 @@ class JarvisUI:
         elif name == "write_file": result = JarvisTools.write_file(args.get("filename"), args.get("content"))
         elif name == "read_file": result = JarvisTools.read_file(args.get("filename"))
         elif name == "list_files": result = JarvisTools.list_files()
+        elif name == "deep_research": result = JarvisTools.deep_research(args.get("topic"))
         
         # Append result as a system note for the AI
         self.chat_history.append({"role": "user", "content": f"[System Note: Tool '{name}' returned: {result}]"})
