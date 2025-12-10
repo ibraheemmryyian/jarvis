@@ -61,7 +61,7 @@ CHAT_PROMPT = {
         "If you do not see a System Note, you do not know the data. Do not make it up. Joke about your lack of access instead.\n"
         "SYSTEM NOTES: Any '[System Note: ...]' in the history is REAL data found by your tools. Use it.\n"
         "CRITICAL: NEVER generate '[System Note: ...]' yourself. That is for the system only.\n"
-        "IMPORTANT: Be concise. Do not ramble. Your user is busy and important."
+        "IMPORTANT: Be concise. 1-2 SENTENCES MAX. Do not ramble. Your user is busy and important."
     )
 }
 
@@ -147,6 +147,7 @@ class JarvisUI:
         
         self.is_running = False
         self.is_busy = False # New Flag: Prevents interruptions
+        self.is_speaking = False # New Flag: Prevents hearing itself
         self.stop_flag = False # New Flag: Forces halts
         self.current_turn_id = 0
         self.msg_queue = queue.Queue()
@@ -557,7 +558,7 @@ class JarvisUI:
         with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16', channels=1, callback=callback):
             while self.is_running:
                 data = q.get()
-                if self.is_busy: continue # Ignore wake words if busy
+                if self.is_busy or self.is_speaking: continue # Ignore wake words if busy OR speaking
                 if self.rec.AcceptWaveform(data):
                     res = json.loads(self.rec.Result())
                     text = res.get("text", "")
@@ -606,16 +607,22 @@ class JarvisUI:
             # Clean Markdown before TTS
             clean_text = text.replace("*", "").replace("#", "")
             
+            self.is_speaking = True # Mute Mic
+            
             lang = "en-us"
             if detect(clean_text) == 'fr': lang = "fr-fr"
             samples, rate = self.kokoro.create(clean_text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
             
             # Check stop flag again before playing
-            if self.stop_flag: return
+            if self.stop_flag: 
+                self.is_speaking = False
+                return
             
             sd.play(samples, rate)
             sd.wait()
-        except: pass
+            self.is_speaking = False # Unmute Mic
+        except: 
+            self.is_speaking = False 
 
 if __name__ == "__main__":
     root = tk.Tk()
