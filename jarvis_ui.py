@@ -76,7 +76,8 @@ TOOL_PROMPT = {
         "2. write_file(filename, content): Save content to file. Use \\n for newlines.\n"
         "3. read_file(filename): Read text from a file.\n"
         "4. list_files(): List files in workspace.\n"
-        "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data. Use this for 'research', 'learn about', or 'write a paper' requests.\n"
+        "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data.\n"
+        "6. read_clipboard(): Read text currently copied to your clipboard. Use this if user says 'summarize this' or 'look at what I copied'.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
         "STRATEGY: 1. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
         "2. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
@@ -159,6 +160,12 @@ class JarvisTools:
             
             return aggregated
         except Exception as e: return f"Research Error: {e}"
+
+    @staticmethod
+    def read_clipboard():
+        try:
+            return root.clipboard_get()
+        except: return "Clipboard Empty."
 
 class JarvisUI:
     def __init__(self, root):
@@ -436,6 +443,7 @@ class JarvisUI:
         elif name == "read_file": result = JarvisTools.read_file(args.get("filename"))
         elif name == "list_files": result = JarvisTools.list_files()
         elif name == "deep_research": result = JarvisTools.deep_research(args.get("topic"))
+        elif name == "read_clipboard": result = JarvisTools.read_clipboard()
         
         # Append result as a system note for the AI
         self.chat_history.append({"role": "user", "content": f"[System Note: Tool '{name}' returned: {result}]"})
@@ -550,7 +558,7 @@ class JarvisUI:
     def save_memory(self):
         if not self.current_chat_file: return
         path = os.path.join(CHATS_DIR, self.current_chat_file)
-        save_data = [self.chat_history[0]] + self.chat_history[-100:]
+        save_data = [self.chat_history[0]] + self.chat_history[-1000:] # Unlocked for High-RAM
         with open(path, "w", encoding="utf-8") as f: json.dump(save_data, f, indent=4)
 
     def load_ai(self):
