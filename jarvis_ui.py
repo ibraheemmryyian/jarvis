@@ -73,6 +73,7 @@ TOOL_PROMPT = {
         "3. read_file(filename): Read text from a file.\n"
         "4. list_files(): List files in workspace.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
+        "STRATEGY: If the user asks for a file, check if it exists. If it is missing or empty, you MUST use 'search_web' to find the content, then 'write_file' to create it.\n"
         "IMPORTANT: If the task is complete (e.g. you have searched and found the answer), output: {\"tool\": \"done\", \"args\": {}}"
     )
 }
