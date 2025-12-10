@@ -80,11 +80,13 @@ TOOL_PROMPT = {
         "6. read_clipboard(): Read text from clipboard.\n"
         "7. launch_app(app_name): Open apps. Supported: spotify, chrome, notepad, calculator, explorer.\n"
         "8. system_control(command): 'lock' (Lock PC), 'shutdown' (Shutdown PC).\n"
+        "9. run_python(script_name): Run a python script INSIDE your workspace. Returns stdout/stderr.\n"
+        "10. copy_to_workspace(source_path): Clones a generic file/folder path (e.g. 'C:/my_project') into your workspace for analysis/testing.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
         "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
         "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
         "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
-        "4. DO NOT just say 'file exists'. The user is complaining it is empty. FIX IT.\n"
+        "4. ORGANIZE: Use subfolders (e.g. 'project_x/main.py'). The system will create them for you.\n"
         "5. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
     )
 }
@@ -106,6 +108,9 @@ class JarvisTools:
                 return "Error: Write access is restricted to the workspace. Relative paths only."
             
             path = os.path.join(WORKSPACE_DIR, filename)
+            
+            # Auto-create directories
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             
             if filename.lower().endswith(".pdf"):
                 c = canvas.Canvas(path, pagesize=letter)
@@ -220,6 +225,47 @@ class JarvisTools:
                  return "Screen control requires 'nircmd'."
             return "Unknown System Command."
         except Exception as e: return f"Error: {e}"
+
+    @staticmethod
+    def run_python(script_name):
+        try:
+            # Check Sandbox
+            if os.path.isabs(script_name) or ".." in script_name:
+                return "Error: Script must be in workspace."
+            
+            path = os.path.join(WORKSPACE_DIR, script_name)
+            if not os.path.exists(path): return f"Script '{script_name}' not found."
+            
+            # Run with timeout to prevent hanging the brain
+            result = subprocess.run(
+                ["python", path], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            ) # 10s timeout for safety
+            
+            output = result.stdout + "\n" + result.stderr
+            return f"--- Execution Output ---\n{output.strip()}"
+        except subprocess.TimeoutExpired:
+            return "Error: Execution Timed Out (10s limit)."
+        except Exception as e: return f"Execution Error: {e}"
+
+    @staticmethod
+    def copy_to_workspace(source_path):
+        try:
+            if not os.path.exists(source_path): return "Source not found."
+            
+            basename = os.path.basename(source_path)
+            dest = os.path.join(WORKSPACE_DIR, basename)
+            
+            if os.path.isdir(source_path):
+                if os.path.exists(dest): shutil.rmtree(dest) # Overwrite
+                shutil.copytree(source_path, dest)
+                return f"Copied directory '{basename}' to workspace."
+            else:
+                shutil.copy2(source_path, dest)
+                return f"Copied file '{basename}' to workspace."
+        except Exception as e: return f"Copy Error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
@@ -500,6 +546,8 @@ class JarvisUI:
         elif name == "read_clipboard": result = JarvisTools.read_clipboard()
         elif name == "launch_app": result = JarvisTools.launch_app(args.get("app_name"))
         elif name == "system_control": result = JarvisTools.system_control(args.get("command"))
+        elif name == "run_python": result = JarvisTools.run_python(args.get("script_name"))
+        elif name == "copy_to_workspace": result = JarvisTools.copy_to_workspace(args.get("source_path"))
         
         # Append result as a system note for the AI
         self.chat_history.append({"role": "user", "content": f"[System Note: Tool '{name}' returned: {result}]"})
