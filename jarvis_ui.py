@@ -76,8 +76,10 @@ TOOL_PROMPT = {
         "3. read_file(filename): Read text from a file.\n"
         "4. list_files(): List files in workspace.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY: If the user asks for a file, check if it exists. If it is missing or empty, you MUST use 'search_web' to find the content, then 'write_file' to create it.\n"
-        "IMPORTANT: If the task is complete (e.g. you have searched and found the answer), output: {\"tool\": \"done\", \"args\": {}}"
+        "STRATEGY: 1. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
+        "2. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
+        "3. DO NOT just say 'file exists'. The user is complaining it is empty. FIX IT.\n"
+        "4. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
     )
 }
 
