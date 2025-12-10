@@ -99,7 +99,12 @@ class JarvisTools:
     @staticmethod
     def write_file(filename, content):
         try:
+            # SECURITY: Enforce Sandbox
+            if os.path.isabs(filename) or ".." in filename:
+                return "Error: Write access is restricted to the workspace. Relative paths only."
+            
             path = os.path.join(WORKSPACE_DIR, filename)
+            
             if filename.lower().endswith(".pdf"):
                 c = canvas.Canvas(path, pagesize=letter)
                 width, height = letter
