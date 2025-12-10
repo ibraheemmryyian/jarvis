@@ -77,7 +77,9 @@ TOOL_PROMPT = {
         "3. read_file(filename): Read text from a file. Accepts ABSOLUTE paths (e.g. 'C:/Users/file.txt') or relative.\n"
         "4. list_files(path): List files. Default is workspace. You can pass 'C:/' or any folder path.\n"
         "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data.\n"
-        "6. read_clipboard(): Read text currently copied to your clipboard. Use this if user says 'summarize this' or 'look at what I copied'.\n"
+        "6. read_clipboard(): Read text from clipboard.\n"
+        "7. launch_app(app_name): Open apps. Supported: spotify, chrome, notepad, calculator, explorer.\n"
+        "8. system_control(command): 'lock' (Lock PC), 'shutdown' (Shutdown PC).\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
         "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
         "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
@@ -179,6 +181,45 @@ class JarvisTools:
         try:
             return root.clipboard_get()
         except: return "Clipboard Empty."
+
+    @staticmethod
+    def launch_app(app_name):
+        try:
+            app_map = {
+                "spotify": "spotify",
+                "chrome": "chrome",
+                "calculator": "calc",
+                "notepad": "notepad",
+                "explorer": "explorer",
+                "cmd": "cmd",
+                "powershell": "powershell"
+            }
+            target = app_map.get(app_name.lower(), app_name)
+            os.system(f"start {target}")
+            return f"Launched {app_name}"
+        except Exception as e: return f"Error launching {app_name}: {e}"
+
+    @staticmethod
+    def system_control(command):
+        try:
+            if command == "shutdown":
+                os.system("shutdown /s /t 10")
+                return "Shutting down in 10s... (Run 'shutdown /a' to cancel)"
+            elif command == "volume_mute":
+                # Uses a generic way to toggle mute via VBS script oneliner or third party tool if available. 
+                # For vanilla python without libs, this is tricky. 
+                # Let's use a powershell trick for now or just acknowledge limitation.
+                # Actually, 'nircmd' is best but user doesn't have it.
+                # We will stick to simple shutdown/lock for now to avoid dependency hell.
+                return "Volume control requires 'nircmd' installed. Command ignored."
+            elif command == "lock":
+                os.system("rundll32.exe user32.dll,LockWorkStation")
+                return "Workstation Locked."
+            elif command == "screen_off":
+                 # This usually requires nircmd too.
+                 return "Screen control requires 'nircmd'."
+            return "Unknown System Command."
+        except Exception as e: return f"Error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
@@ -457,6 +498,8 @@ class JarvisUI:
         elif name == "list_files": result = JarvisTools.list_files(args.get("path"))
         elif name == "deep_research": result = JarvisTools.deep_research(args.get("topic"))
         elif name == "read_clipboard": result = JarvisTools.read_clipboard()
+        elif name == "launch_app": result = JarvisTools.launch_app(args.get("app_name"))
+        elif name == "system_control": result = JarvisTools.system_control(args.get("command"))
         
         # Append result as a system note for the AI
         self.chat_history.append({"role": "user", "content": f"[System Note: Tool '{name}' returned: {result}]"})
