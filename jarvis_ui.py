@@ -60,7 +60,8 @@ CHAT_PROMPT = {
         "LIMITATIONS: You are a local AI. You do NOT have access to the user's real-time emails, bank accounts, or calendar unless explicitly shown in a '[System Note]'. "
         "If you do not see a System Note, you do not know the data. Do not make it up. Joke about your lack of access instead.\n"
         "SYSTEM NOTES: Any '[System Note: ...]' in the history is REAL data found by your tools. Use it.\n"
-        "CRITICAL: NEVER generate '[System Note: ...]' yourself. That is for the system only."
+        "CRITICAL: NEVER generate '[System Note: ...]' yourself. That is for the system only.\n"
+        "IMPORTANT: Be concise. Do not ramble. Your user is busy and important."
     )
 }
 
@@ -145,6 +146,8 @@ class JarvisUI:
         self.root.configure(bg="#000000")
         
         self.is_running = False
+        self.is_busy = False # New Flag: Prevents interruptions
+        self.stop_flag = False # New Flag: Forces halts
         self.current_turn_id = 0
         self.msg_queue = queue.Queue()
         self.current_chat_file = None
@@ -152,7 +155,7 @@ class JarvisUI:
         self.setup_ui()
         self.log_system("Initializing Sentient Suite...")
         
-        self.load_chat_list() # Load existing chats
+        self.load_chat_list()
         if not self.current_chat_file: self.new_chat()
         
         threading.Thread(target=self.load_ai, daemon=True).start()
@@ -215,8 +218,31 @@ class JarvisUI:
         
         self.btn_toggle = tk.Button(btn_frame, text="VOICE_UPLINK: OFF", command=self.toggle_listening, bg="#111", fg="#555", font=FONT_MAIN, relief="flat", height=2, activebackground=THEME_HL, activeforeground=THEME_FG)
         self.btn_toggle.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+
+        # STOP BUTTON (New)
+        self.btn_stop = tk.Button(btn_frame, text="[ ABORT ]", command=self.stop_action, bg="#330000", fg="#ff0000", font=FONT_BOLD, relief="flat", height=2, state="disabled")
+        self.btn_stop.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         tk.Button(btn_frame, text="PURGE_DATABANK", command=self.delete_chat, bg="#220000", fg="#ff4444", font=FONT_MAIN, relief="flat", height=2, activebackground="#440000", activeforeground="#ff0000").pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(5, 0))
+
+    def stop_action(self):
+        """Emergency Stop"""
+        self.log_system("!!! EMERGENCY STOP TRIGGERED !!!")
+        self.stop_flag = True
+        self.is_busy = False
+        self.toggle_busy(False)
+        sd.stop() # Kill Audio
+
+    def toggle_busy(self, is_busy):
+        """Locks UI during tasks"""
+        self.is_busy = is_busy
+        if is_busy:
+            self.msg_entry.config(state="disabled")
+            self.btn_stop.config(state="normal", bg="#ff0000", fg="#ffffff")
+        else:
+            self.msg_entry.config(state="normal")
+            self.btn_stop.config(state="disabled", bg="#330000", fg="#ff0000")
+            self.stop_flag = False
 
     def log_system(self, text): self.msg_queue.put(("system", text))
 
@@ -277,6 +303,7 @@ class JarvisUI:
         self.root.after(100, self.process_queue)
 
     def send_text(self, event=None):
+        if self.is_busy: return # Block input if busy
         text = self.msg_entry.get().strip()
         if not text: return
         self.msg_entry.delete(0, tk.END)
@@ -288,11 +315,18 @@ class JarvisUI:
         """The Main Decision Engine"""
         if turn_id != self.current_turn_id: return
         
+        self.toggle_busy(True) # Lock UI / Ignore Wake Word
+        self.stop_flag = False
+        
         self.chat_history.append({"role": "user", "content": user_text})
         
         # Step 1: The Router - Is this a task?
         is_task = self.check_intent(user_text)
         
+        if self.stop_flag: 
+            self.toggle_busy(False)
+            return
+
         if is_task:
             self.log_system("Core: Task Detected. Switching to Engineering Mode.")
             self.chat_history[0] = TOOL_PROMPT # Swap Brain to Engineer
@@ -301,6 +335,8 @@ class JarvisUI:
             self.log_system("Core: Casual Chat Detected.")
             self.chat_history[0] = CHAT_PROMPT # Swap Brain to Jarvis
             self.generate_final_response(source, turn_id)
+        
+        if not self.stop_flag: self.toggle_busy(False) # Unlock if finished normally
 
     def check_intent(self, text):
         """Asks a tiny, fast instance of the LLM if this is a task"""
@@ -318,7 +354,7 @@ class JarvisUI:
 
     def run_tool_loop(self, source, turn_id):
         """The Engineer Brain Loop"""
-        if turn_id != self.current_turn_id: return
+        if turn_id != self.current_turn_id or self.stop_flag: return
         
         payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": 8000}
         
@@ -352,7 +388,7 @@ class JarvisUI:
             self.log_system(f"Engineer Error: {e}")
 
     def execute_tool(self, data, source, turn_id):
-        if turn_id != self.current_turn_id: return
+        if turn_id != self.current_turn_id or self.stop_flag: return
         
         name = data.get("tool")
         args = data.get("args", {})
@@ -372,13 +408,15 @@ class JarvisUI:
 
     def generate_final_response(self, source, turn_id):
         """The Jarvis Brain Speak"""
-        if turn_id != self.current_turn_id: return
+        if turn_id != self.current_turn_id or self.stop_flag: return
         
         payload = {"messages": self.chat_history, "temperature": 0.7, "max_tokens": -1}
         try:
             res = requests.post(LM_STUDIO_URL, json=payload).json()
             text = res['choices'][0]['message']['content']
             
+            if self.stop_flag: return
+
             self.chat_history.append({"role": "assistant", "content": text})
             self.msg_queue.put(("jarvis", text))
             self.save_memory()
@@ -445,6 +483,7 @@ class JarvisUI:
         with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16', channels=1, callback=callback):
             while self.is_running:
                 data = q.get()
+                if self.is_busy: continue # Ignore wake words if busy
                 if self.rec.AcceptWaveform(data):
                     res = json.loads(self.rec.Result())
                     text = res.get("text", "")
@@ -488,10 +527,18 @@ class JarvisUI:
         except: pass
 
     def speak(self, text):
+        if self.stop_flag: return
         try:
+            # Clean Markdown before TTS
+            clean_text = text.replace("*", "").replace("#", "")
+            
             lang = "en-us"
-            if detect(text) == 'fr': lang = "fr-fr"
-            samples, rate = self.kokoro.create(text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
+            if detect(clean_text) == 'fr': lang = "fr-fr"
+            samples, rate = self.kokoro.create(clean_text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
+            
+            # Check stop flag again before playing
+            if self.stop_flag: return
+            
             sd.play(samples, rate)
             sd.wait()
         except: pass
