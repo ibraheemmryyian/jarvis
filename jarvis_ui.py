@@ -26,6 +26,8 @@ GRAMMAR = '["hey jarvis", "hey bitch", "jarvis", "wake up", "[unk]"]'
 LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
 DEFAULT_VOICE = "af_bella"
 
+import datetime
+
 # --- Paths & Workspace ---
 def resource_path(relative_path):
     try:
@@ -35,10 +37,11 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis_workspace")
-if not os.path.exists(WORKSPACE_DIR):
-    os.makedirs(WORKSPACE_DIR)
+CHATS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chats")
+if not os.path.exists(WORKSPACE_DIR): os.makedirs(WORKSPACE_DIR)
+if not os.path.exists(CHATS_DIR): os.makedirs(CHATS_DIR)
 
-MEMORY_FILE = resource_path("memory.json")
+MEMORY_FILE = resource_path("memory.json") # Fallback/Default
 VOSK_MODEL = resource_path("model")
 KOKORO_MODEL = resource_path("kokoro-v1.0.onnx") 
 KOKORO_VOICES = resource_path("voices-v1.0.bin") 
@@ -135,48 +138,126 @@ class JarvisTools:
 class JarvisUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("J.A.R.V.I.S - SENTIENT SUITE")
-        self.root.geometry("600x800")
-        self.root.configure(bg="#050505")
+        self.root.title("J.A.R.V.I.S // TERMINAL_LINK_V2")
+        self.root.geometry("900x650")
+        self.root.configure(bg="#000000")
         
         self.is_running = False
         self.current_turn_id = 0
         self.msg_queue = queue.Queue()
-        self.load_memory()
+        self.current_chat_file = None
         
         self.setup_ui()
         self.log_system("Initializing Sentient Suite...")
+        
+        self.load_chat_list() # Load existing chats
+        if not self.current_chat_file: self.new_chat()
+        
         threading.Thread(target=self.load_ai, daemon=True).start()
         self.root.after(100, self.process_queue)
 
     def setup_ui(self):
-        header = tk.Label(self.root, text="J.A.R.V.I.S", font=("Impact", 20), bg="#050505", fg="#00ff41")
-        header.pack(pady=10)
-        self.chat_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, bg="#0a0a0a", fg="#ccffcc", font=("Consolas", 10), state='disabled')
-        self.chat_area.pack(padx=15, pady=10, fill=tk.BOTH, expand=True)
+        # Configuration
+        THEME_BG = "#000000"
+        THEME_FG = "#00ff33" # Retro Green
+        THEME_HL = "#003300"
+        FONT_MAIN = ("Consolas", 10)
+        FONT_BOLD = ("Consolas", 12, "bold")
+
+        # Layout: Sidebar (Left) vs Main (Right)
+        self.sidebar = tk.Frame(self.root, bg="#111111", width=220)
+        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)
+
+        self.main_area = tk.Frame(self.root, bg=THEME_BG)
+        self.main_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        # --- Sidebar Content ---
+        tk.Label(self.sidebar, text=" // SESSIONS", bg="#111", fg="#666", font=FONT_BOLD).pack(pady=(15, 10))
+        
+        self.btn_new = tk.Button(self.sidebar, text="[+] NEW LINK", command=self.new_chat, bg="#222", fg=THEME_FG, relief="flat", font=FONT_MAIN, activebackground=THEME_HL, activeforeground=THEME_FG)
+        self.btn_new.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.chat_list = tk.Listbox(self.sidebar, bg="#000", fg="#888", selectbackground=THEME_HL, selectforeground=THEME_FG, bd=0, highlightthickness=0, font=FONT_MAIN)
+        self.chat_list.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.chat_list.bind("<<ListboxSelect>>", self.on_chat_select)
+        
+        # --- Main Area Content ---
+        # Header
+        header = tk.Frame(self.main_area, bg=THEME_BG)
+        header.pack(fill=tk.X, pady=(10, 5), padx=20)
+        tk.Label(header, text="J.A.R.V.I.S", font=("Impact", 20), bg=THEME_BG, fg=THEME_FG).pack(side=tk.LEFT)
+        tk.Label(header, text=":: SYSTEM_ONLINE", font=("Consolas", 10), bg=THEME_BG, fg="#555").pack(side=tk.LEFT, padx=10, pady=(10, 0))
+        
+        # Chat Display
+        self.chat_area = scrolledtext.ScrolledText(self.main_area, wrap=tk.WORD, bg="#050505", fg="#ddd", font=FONT_MAIN, state='disabled', bd=0)
+        self.chat_area.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
         self.chat_area.tag_config("user", foreground="#00ccff", justify="right")
-        self.chat_area.tag_config("jarvis", foreground="#00ff41", justify="left")
+        self.chat_area.tag_config("jarvis", foreground=THEME_FG, justify="left")
         self.chat_area.tag_config("tool", foreground="#ffaa00", justify="left", font=("Consolas", 9, "italic"))
-        self.chat_area.tag_config("system", foreground="#555555", justify="center")
+        self.chat_area.tag_config("system", foreground="#444", justify="center")
 
-        if len(self.chat_history) > 1:
-            for msg in self.chat_history:
-                if msg["role"] == "user": self.add_to_ui("user", msg["content"])
-                elif msg["role"] == "assistant": self.add_to_ui("jarvis", msg["content"])
-
-        input_frame = tk.Frame(self.root, bg="#050505")
-        input_frame.pack(fill=tk.X, padx=15, pady=5)
-        self.msg_entry = tk.Entry(input_frame, bg="#111", fg="#00ccff", font=("Consolas", 12), insertbackground="#00ccff", relief="flat")
-        self.msg_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=5)
+        # Input Zone
+        input_frame = tk.Frame(self.main_area, bg=THEME_BG)
+        input_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        tk.Label(input_frame, text=">", bg=THEME_BG, fg=THEME_FG, font=FONT_BOLD).pack(side=tk.LEFT)
+        
+        self.msg_entry = tk.Entry(input_frame, bg="#111", fg=THEME_FG, font=("Consolas", 11), insertbackground=THEME_FG, relief="flat", bd=5)
+        self.msg_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
         self.msg_entry.bind("<Return>", self.send_text)
         
-        btn_frame = tk.Frame(self.root, bg="#050505")
-        btn_frame.pack(fill=tk.X, padx=15, pady=10)
-        self.btn_toggle = tk.Button(btn_frame, text="INITIATE LISTENING", command=self.toggle_listening, bg="#111", fg="#00ff41", font=("Consolas", 11, "bold"), relief="flat", height=2)
-        self.btn_toggle.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        tk.Button(btn_frame, text="WIPE MEMORY", command=self.clear_memory, bg="#330000", fg="#ff4444", font=("Consolas", 11, "bold"), relief="flat", height=2).pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        # Buttons
+        btn_frame = tk.Frame(self.main_area, bg=THEME_BG)
+        btn_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
+        
+        self.btn_toggle = tk.Button(btn_frame, text="VOICE_UPLINK: OFF", command=self.toggle_listening, bg="#111", fg="#555", font=FONT_MAIN, relief="flat", height=2, activebackground=THEME_HL, activeforeground=THEME_FG)
+        self.btn_toggle.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        tk.Button(btn_frame, text="PURGE_DATABANK", command=self.delete_chat, bg="#220000", fg="#ff4444", font=FONT_MAIN, relief="flat", height=2, activebackground="#440000", activeforeground="#ff0000").pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(5, 0))
 
     def log_system(self, text): self.msg_queue.put(("system", text))
+
+    def load_chat_list(self):
+        self.chat_list.delete(0, tk.END)
+        if not os.path.exists(CHATS_DIR): return
+        self.files = sorted([f for f in os.listdir(CHATS_DIR) if f.endswith(".json")], reverse=True)
+        for f in self.files:
+            self.chat_list.insert(tk.END, f.replace(".json", ""))
+
+    def new_chat(self):
+        timestamp = datetime.datetime.now().strftime("Session_%Y-%m-%d_%H-%M-%S")
+        self.current_chat_file = f"{timestamp}.json"
+        self.chat_history = [CHAT_PROMPT]
+        self.save_memory()
+        self.load_chat_list()
+        self.chat_area.config(state='normal')
+        self.chat_area.delete('1.0', tk.END)
+        self.chat_area.config(state='disabled')
+        self.log_system(f"New Session: {timestamp}")
+
+    def on_chat_select(self, event):
+        w = event.widget
+        if not w.curselection(): return
+        index = w.curselection()[0]
+        filename = self.files[index]
+        self.current_chat_file = filename
+        self.load_memory()
+        self.chat_area.config(state='normal')
+        self.chat_area.delete('1.0', tk.END)
+        for msg in self.chat_history:
+             if msg["role"] == "user": self.add_to_ui("user", msg["content"])
+             elif msg["role"] == "assistant": self.add_to_ui("jarvis", msg["content"])
+             elif "System Note" in msg["content"]: self.add_to_ui("system", msg["content"])
+        self.chat_area.config(state='disabled')
+        self.log_system(f"Loaded: {filename}")
+
+    def delete_chat(self):
+        if not self.current_chat_file: return
+        path = os.path.join(CHATS_DIR, self.current_chat_file)
+        if os.path.exists(path):
+            os.remove(path)
+            self.new_chat()
     
     def add_to_ui(self, role, text):
         self.chat_area.config(state='normal')
@@ -307,7 +388,7 @@ class JarvisUI:
     # ... (Rest of standard functions: clear_memory, load_memory, save_memory, load_ai, toggle_listening, listen_loop, handle_audio_input, speak) ...
     def clear_memory(self):
         self.current_turn_id += 1
-        self.chat_history = [CHAT_PROMPT] # Reset to Chat Prompt default
+        self.chat_history = [CHAT_PROMPT]
         self.save_memory()
         self.chat_area.config(state='normal')
         self.chat_area.delete('1.0', tk.END)
@@ -315,9 +396,13 @@ class JarvisUI:
         self.log_system("Memory Wiped.")
 
     def load_memory(self):
-        if os.path.exists(MEMORY_FILE):
+        if not self.current_chat_file: 
+            self.chat_history = [CHAT_PROMPT]
+            return
+        path = os.path.join(CHATS_DIR, self.current_chat_file)
+        if os.path.exists(path):
             try:
-                with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     self.chat_history = json.load(f)
                     if self.chat_history: self.chat_history[0] = CHAT_PROMPT
                     else: self.chat_history = [CHAT_PROMPT]
@@ -325,8 +410,10 @@ class JarvisUI:
         else: self.chat_history = [CHAT_PROMPT]
 
     def save_memory(self):
+        if not self.current_chat_file: return
+        path = os.path.join(CHATS_DIR, self.current_chat_file)
         save_data = [self.chat_history[0]] + self.chat_history[-100:]
-        with open(MEMORY_FILE, "w", encoding="utf-8") as f: json.dump(save_data, f, indent=4)
+        with open(path, "w", encoding="utf-8") as f: json.dump(save_data, f, indent=4)
 
     def load_ai(self):
         try:
