@@ -24,6 +24,12 @@ Jarvis is a local, voice-activated AI assistant designed with a "Two-Brain" arch
 - **Control**: "Launch Spotify", "Lock PC", "Shutdown", "Open Calculator".
 - **Clipboard**: "Summarize this" (Reads your clipboard instantly).
 
+### 4. **Smart Organization (Auto-Sort)**
+- **Projects/**: All generated code/apps are stored here.
+- **Learning/**: Research papers and study notes.
+- **Personal/**: Casual journals and miscellaneous text.
+- *He automatically detects context and sorts your files.*
+
 ## 🛠️ Configuration (CRITICAL)
 
 ### 1. LM Studio
