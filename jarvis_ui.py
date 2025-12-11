@@ -62,7 +62,9 @@ CHAT_PROMPT = {
         "If you do not see a System Note, you do not know the data. Do not make it up. Joke about your lack of access instead.\n"
         "SYSTEM NOTES: Any '[System Note: ...]' in the history is REAL data found by your tools. Use it.\n"
         "CRITICAL: NEVER generate '[System Note: ...]' yourself. That is for the system only.\n"
-        "IMPORTANT: Be concise. 1-2 SENTENCES MAX. Do not ramble. Your user is busy and important."
+        "IMPORTANT: Be concise. 1-2 SENTENCES MAX.\n"
+        "EXCEPTION: If Deep Research Runs: Give a VERY brief summary (1 sentence) and constantly refer to the saved file.\n"
+        "Example: 'I found 3 papers on fusion. The full breakdown is in Learning/Research_Fusion.txt.'"
     )
 }
 
@@ -189,7 +191,15 @@ class JarvisTools:
             results = list(DDGS().text(f"statistics data {topic}", max_results=3))
             aggregated += "\n\n[KEY DATA]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
             
-            return aggregated
+            # SMART SAVE: Auto-save to Learning/ folder
+            filename = f"Learning/Research_{topic.replace(' ', '_')}_{int(time.time())}.txt"
+            full_path = os.path.join(WORKSPACE_DIR, filename)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(aggregated)
+            
+            return f"Research Complete. Full data saved to '{filename}'.\n\n[Preview Analysis]: {aggregated[:600]}..."
         except Exception as e: return f"Research Error: {e}"
 
     @staticmethod
@@ -797,7 +807,21 @@ class JarvisUI:
             
             lang = "en-us"
             if detect(clean_text) == 'fr': lang = "fr-fr"
+            self.log_system(f"TTS: Synthesizing '{clean_text}'...")
             samples, rate = self.kokoro.create(clean_text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
+            if len(samples) == 0: 
+                self.log_system("TTS Error: No audio samples generated.")
+                self.is_speaking = False
+                return
+
+            self.log_system("TTS: Playing Audio...")
+            sd.play(samples, rate)
+            sd.wait()
+            self.log_system("TTS: Done.")
+            self.is_speaking = False
+        except Exception as e: 
+            self.log_system(f"TTS Error: {e}")
+            self.is_speaking = False
             
             # Check stop flag again before playing
             if self.stop_flag: 
