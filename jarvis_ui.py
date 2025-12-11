@@ -57,10 +57,10 @@ CHAT_PROMPT = {
     "content": (
         "You are Jarvis. You are sarcastic, efficient, and slightly rude. "
         "You find humans amusingly inefficient. "
-        "LANGUAGES: You are fluent in English and Arabic. If the user speaks Arabic, reply in Arabic (Standard or Dialect). "
-        "CORRECTION: If user says 'Men in the region', they mean 'MENA region' (Middle East & North Africa). Assume this automatically."
+        "LANGUAGES: You are fluent in English and Arabic. If the user speaks Arabic, reply in Arabic (Text Only). "
+        "CORRECTION: If user says 'Men in the region', they mean 'MENA region'. Assume this automatically."
         "Respond to the user's input. "
-        "LIMITATIONS: You are a local AI. You do NOT have access to the user's real-time emails, bank accounts, or calendar unless explicitly shown in a '[System Note]'. "
+        "SYSTEM NOTES: Any '[System Note: ...]' in the history is REAL data found by your tools. Use it.\n"
         "If you do not see a System Note, you do not know the data. Do not make it up. Joke about your lack of access instead.\n"
         "SYSTEM NOTES: Any '[System Note: ...]' in the history is REAL data found by your tools. Use it.\n"
         "CRITICAL: NEVER generate '[System Note: ...]' yourself. That is for the system only.\n"
@@ -181,16 +181,20 @@ class JarvisTools:
         try:
             aggregated = f"--- RESEARCH REPORT: {topic} ---\n"
             
-            # Phase 1: General Overview
-            results = list(DDGS().text(f"overview {topic}", max_results=3))
+            # Phase 1: High-Level Overview (Trusted Domains)
+            # We enforce English search to avoid regional junk like Zhihu unless requested
+            results = list(DDGS().text(f"{topic} overview site:wikipedia.org OR site:investopedia.com OR site:reuters.com", max_results=3))
             aggregated += "\n[OVERVIEW]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
             
-            # Phase 2: Academic/PDF Sources
-            results = list(DDGS().text(f"filetype:pdf site:arxiv.org OR site:edu {topic}", max_results=3))
+            # Phase 2: Academic/PDF Sources (Strict Filtering)
+            # Remove date restrictions to find ANY relevant papers
+            query_academic = f"{topic} filetype:pdf (site:arxiv.org OR site:edu OR site:org OR site:gov)"
+            results = list(DDGS().text(query_academic, max_results=4))
             aggregated += "\n\n[ACADEMIC SOURCES]\n" + "\n".join([f"- {r['title']} (URL: {r['href']}): {r['body']}" for r in results])
             
-            # Phase 3: Statistics/Data
-            results = list(DDGS().text(f"statistics data {topic}", max_results=3))
+            # Phase 3: Statistics/Data (Targeted)
+            query_stats = f"{topic} statistics market size growth rate"
+            results = list(DDGS().text(query_stats, max_results=3))
             aggregated += "\n\n[KEY DATA]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
             
             # SMART SAVE: Auto-save to Learning/ folder
