@@ -19,6 +19,7 @@ from duckduckgo_search import DDGS
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit
+import shutil
 
 # --- Configuration ---
 WAKE_WORDS = ["hey jarvis", "hey bitch", "jarvis", "wake up"]

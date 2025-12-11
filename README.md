@@ -3,53 +3,53 @@
 Jarvis is a local, voice-activated AI assistant designed with a "Two-Brain" architecture to balance a sarcastic personality with strict engineering capabilities.
 
 ## 🧠 Architecture
-
-- **Brain 1 (The Soul)**: Handles conversation, insults, and personality logic.
-- **Brain 2 (The Engineer)**: A silent, JSON-based agent that executes tools (Web Search, File I/O) without breaking character.
+- **Brain 1 (The Soul)**: A sarcastic, concise, personality-driven interface.
+- **Brain 2 (The Engineer)**: A silent, JSON-based agent using **Qwen3 Coder 30B** (Recommended) for complex tasks.
 
 ## ✨ Features
 
-- **Voice Interaction**: Wake word detection ("Hey Jarvis") and voice response.
-- **Deep Research**: Can search the web using DuckDuckGo.
-- **File Management**: Can read, write, and list files in the `jarvis_workspace` directory.
-- **Memory**: Retains context for up to 100 conversation turns.
+### 1. **Autonomous Builder (Architect Mode)**
+- **Scaffold Projects**: "Scaffold a frontend app called 'Dash'." -> Creates HTML/CSS/JS.
+- **Python Automation**: "Scaffold a python tool". -> Creates `main.py`, `tests/`, `requirements.txt`.
+- **Coding**: "Copy my project here and run the tests." -> Ingests code, runs it safely, reports errors.
 
-## 🛠️ Prerequisites & Downloads
+### 2. **Deep Research (Scholar Mode)**
+- **Academic Scraper**: "Write a paper on fusion." -> Scrapes Arxiv, PDFs, and generic web data.
+- **Synthesis**: Compiles multi-source data into a single coherent report.
+- **Memory**: Remembers up to **1000 turns** of context (thanks to your 48GB RAM).
 
-To run Jarvis, you must download and install these external components:
+### 3. **System Automation (God Mode)**
+- **Read-Only Access**: Can read ANY file on your PC (`C:/Users/...`).
+- **Sandboxed Write**: Can ONLY write to `jarvis_workspace` (Safety Lock 🔒).
+- **Control**: "Launch Spotify", "Lock PC", "Shutdown", "Open Calculator".
+- **Clipboard**: "Summarize this" (Reads your clipboard instantly).
 
-### 1. LM Studio (The Brain)
-- **Download**: [lmstudio.ai](https://lmstudio.ai/)
-- **Setup**:
-    1.  Install and launch LM Studio.
-    2.  Download a model (recommended: `Llama 3` or `Mistral`).
-    3.  Go to the **Local Server** tab (double-headed arrow icon).
-    4.  Start the server on port `1234`.
-    5.  Ensure "Cors" is enabled (usually default).
+## 🛠️ Configuration (CRITICAL)
 
-### 2. Models (The Voice & Ears)
-You need to place these files in the root `jarvis` folder:
+### 1. LM Studio
+- **Model**: **Qwen3 Coder 30B** (Found in your library) -> **REQUIRED** for Builder features.
+- **Backup**: DeepSeek Coder v2.
+- **Settings**: 
+    - Context Window: **32,000** (or more).
+    - GPU Layers: Max out your RTX 4060.
+    - Server Port: `1234`.
 
-- **Vosk Model (Speech-to-Text)**
-    -   **Download**: [Vosk Models](https://alphacephei.com/vosk/models)
-    -   **Recommended**: `vosk-model-small-en-us-0.15` (fast) or `vosk-model-en-us-0.22` (accurate).
-    -   **Action**: Extract the downloaded zip. Rename the folder to `model`.
+### 2. Audio Models (Check `jarvis/` folder)
+- `model/` (Vosk)
+- `kokoro-v1.0.onnx` & `voices-v1.0.bin` (TTS)
+- `whisper-cli.exe` & `ggml-base.bin` (STT)
 
-- **Kokoro ONNX (Text-to-Speech)**
-    -   **Download**: [Kokoro ONNX Releases](https://github.com/thewh1teagle/kokoro-onnx/releases)
-    -   **Files Needed**:
-        -   `kokoro-v1.0.onnx`
-        -   `voices-v1.0.bin`
-    -   **Action**: Place both files directly in the `jarvis` folder.
+## 🎮 Verified Commands
+- **"Scaffold a frontend project called 'CryptoTracker'."**
+- **"Research quantum computing and save a PDF report."**
+- **"Look at my Downloads folder and list the files."**
+- **"Copy 'C:/Work/ProjectX' here and run the main script."**
+- **"Launch Chrome and open Spotify."**
+- **"Lock the computer."**
 
-- **Whisper (Command Recognition)**
-    -   **Download**: [Whisper.cpp Releases](https://github.com/ggerganov/whisper.cpp/releases/latest)
-    -   **File Needed**: `whisper-cli.exe` (Windows)
-    -   **Model**: [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin)
-    -   **Action**: Place `whisper-cli.exe` and `ggml-base.bin` in the `jarvis` folder.
-
-### 3. Dependencies
-- **[FFmpeg](https://ffmpeg.org/download.html)**: Required for audio processing. Ensure `ffmpeg.exe` is in your system PATH or the `jarvis` folder.
+## ⚠️ Safety
+- **Write Sandbox**: He cannot overwrite your system files. He only writes to `jarvis_workspace`.
+- **Privacy**: All processing is LOCAL (LM Studio). No data leaves your network.
 
 ## 🚀 Installation
 
