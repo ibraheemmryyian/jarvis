@@ -57,6 +57,8 @@ CHAT_PROMPT = {
     "content": (
         "You are Jarvis. You are sarcastic, efficient, and slightly rude. "
         "You find humans amusingly inefficient. "
+        "LANGUAGES: You are fluent in English and Arabic. If the user speaks Arabic, reply in Arabic (Standard or Dialect). "
+        "CORRECTION: If user says 'Men in the region', they mean 'MENA region' (Middle East & North Africa). Assume this automatically."
         "Respond to the user's input. "
         "LIMITATIONS: You are a local AI. You do NOT have access to the user's real-time emails, bank accounts, or calendar unless explicitly shown in a '[System Note]'. "
         "If you do not see a System Note, you do not know the data. Do not make it up. Joke about your lack of access instead.\n"
@@ -754,7 +756,9 @@ class JarvisUI:
         with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype='int16', channels=1, callback=callback):
             while self.is_running:
                 data = q.get()
-                if self.is_busy or self.is_speaking: continue # Ignore wake words if busy OR speaking
+                if self.is_busy or self.is_speaking: 
+                     # STRICT LOCK: Do not process ANY audio while thinking/speaking
+                     continue 
                 if self.rec.AcceptWaveform(data):
                     res = json.loads(self.rec.Result())
                     text = res.get("text", "")
@@ -791,6 +795,12 @@ class JarvisUI:
             result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', startupinfo=si)
             user_text = result.stdout.strip()
             
+            # WHISPER HALLUCINATION FILTER
+            hallucinations = ["[Music]", "[BLANK_AUDIO]", "[Applause]", "(copyright)", "[Silence]"]
+            if any(h.lower() in user_text.lower() for h in hallucinations) or len(user_text) < 2:
+                self.log_system("Ignored: Silence/Hallucination")
+                return
+
             if user_text:
                 self.current_turn_id += 1
                 self.msg_queue.put(("user", user_text))
@@ -806,7 +816,13 @@ class JarvisUI:
             self.is_speaking = True # Mute Mic
             
             lang = "en-us"
-            if detect(clean_text) == 'fr': lang = "fr-fr"
+            detected_lang = detect(clean_text)
+            if detected_lang == 'fr': lang = "fr-fr"
+            elif detected_lang == 'ar':
+                self.log_system("TTS: Arabic not supported (Text Only).")
+                self.is_speaking = False
+                return
+
             self.log_system(f"TTS: Synthesizing '{clean_text}'...")
             samples, rate = self.kokoro.create(clean_text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
             if len(samples) == 0: 
