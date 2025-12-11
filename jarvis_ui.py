@@ -380,73 +380,20 @@ class JarvisUI:
         self.load_chat_list()
         if not self.current_chat_file: self.new_chat()
         
+        self.audio_queue = queue.Queue() # New: For Playing Audio
+        
+        self.setup_ui()
+        self.log_system("Initializing Sentient Suite...")
+        
+        self.load_chat_list()
+        if not self.current_chat_file: self.new_chat()
+        
         threading.Thread(target=self.load_ai, daemon=True).start()
-        threading.Thread(target=self.speech_process, daemon=True).start() # New: Speech Worker
+        threading.Thread(target=self.speech_synthesis_loop, daemon=True).start() # Thread 1: Generate
+        threading.Thread(target=self.audio_playback_loop, daemon=True).start()   # Thread 2: Play
         self.root.after(100, self.process_queue)
 
-    def setup_ui(self):
-        # Configuration
-        THEME_BG = "#000000"
-        THEME_FG = "#00ff33" # Retro Green
-        THEME_HL = "#003300"
-        FONT_MAIN = ("Consolas", 10)
-        FONT_BOLD = ("Consolas", 12, "bold")
-
-        # Layout: Sidebar (Left) vs Main (Right)
-        self.sidebar = tk.Frame(self.root, bg="#111111", width=220)
-        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
-        self.sidebar.pack_propagate(False)
-
-        self.main_area = tk.Frame(self.root, bg=THEME_BG)
-        self.main_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-
-        # --- Sidebar Content ---
-        tk.Label(self.sidebar, text=" // SESSIONS", bg="#111", fg="#666", font=FONT_BOLD).pack(pady=(15, 10))
-        
-        self.btn_new = tk.Button(self.sidebar, text="[+] NEW LINK", command=self.new_chat, bg="#222", fg=THEME_FG, relief="flat", font=FONT_MAIN, activebackground=THEME_HL, activeforeground=THEME_FG)
-        self.btn_new.pack(fill=tk.X, padx=10, pady=5)
-        
-        self.chat_list = tk.Listbox(self.sidebar, bg="#000", fg="#888", selectbackground=THEME_HL, selectforeground=THEME_FG, bd=0, highlightthickness=0, font=FONT_MAIN)
-        self.chat_list.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        self.chat_list.bind("<<ListboxSelect>>", self.on_chat_select)
-        
-        # --- Main Area Content ---
-        # Header
-        header = tk.Frame(self.main_area, bg=THEME_BG)
-        header.pack(fill=tk.X, pady=(10, 5), padx=20)
-        tk.Label(header, text="J.A.R.V.I.S", font=("Impact", 20), bg=THEME_BG, fg=THEME_FG).pack(side=tk.LEFT)
-        tk.Label(header, text=":: SYSTEM_ONLINE", font=("Consolas", 10), bg=THEME_BG, fg="#555").pack(side=tk.LEFT, padx=10, pady=(10, 0))
-        
-        # Chat Display
-        self.chat_area = scrolledtext.ScrolledText(self.main_area, wrap=tk.WORD, bg="#050505", fg="#ddd", font=FONT_MAIN, state='disabled', bd=0)
-        self.chat_area.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
-        self.chat_area.tag_config("user", foreground="#00ccff", justify="right")
-        self.chat_area.tag_config("jarvis", foreground=THEME_FG, justify="left")
-        self.chat_area.tag_config("tool", foreground="#ffaa00", justify="left", font=("Consolas", 9, "italic"))
-        self.chat_area.tag_config("system", foreground="#444", justify="center")
-
-        # Input Zone
-        input_frame = tk.Frame(self.main_area, bg=THEME_BG)
-        input_frame.pack(fill=tk.X, padx=20, pady=10)
-        
-        tk.Label(input_frame, text=">", bg=THEME_BG, fg=THEME_FG, font=FONT_BOLD).pack(side=tk.LEFT)
-        
-        self.msg_entry = tk.Entry(input_frame, bg="#111", fg=THEME_FG, font=("Consolas", 11), insertbackground=THEME_FG, relief="flat", bd=5)
-        self.msg_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
-        self.msg_entry.bind("<Return>", self.send_text)
-        
-        # Buttons
-        btn_frame = tk.Frame(self.main_area, bg=THEME_BG)
-        btn_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
-        
-        self.btn_toggle = tk.Button(btn_frame, text="VOICE_UPLINK: OFF", command=self.toggle_listening, bg="#111", fg="#555", font=FONT_MAIN, relief="flat", height=2, activebackground=THEME_HL, activeforeground=THEME_FG)
-        self.btn_toggle.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-
-        # STOP BUTTON (New)
-        self.btn_stop = tk.Button(btn_frame, text="[ ABORT ]", command=self.stop_action, bg="#330000", fg="#ff0000", font=FONT_BOLD, relief="flat", height=2, state="disabled")
-        self.btn_stop.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        
-        tk.Button(btn_frame, text="PURGE_DATABANK", command=self.delete_chat, bg="#220000", fg="#ff4444", font=FONT_MAIN, relief="flat", height=2, activebackground="#440000", activeforeground="#ff0000").pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(5, 0))
+    # ... [setup_ui, stop_action, toggle_busy, etc.] ...
 
     def stop_action(self):
         """Emergency Stop"""
@@ -458,83 +405,10 @@ class JarvisUI:
         
         # Clear Queues
         with self.speech_queue.mutex: self.speech_queue.queue.clear()
+        with self.audio_queue.mutex: self.audio_queue.queue.clear()
         with self.msg_queue.mutex: self.msg_queue.queue.clear()
 
-    def toggle_busy(self, is_busy):
-        """Locks UI during tasks"""
-        self.is_busy = is_busy
-        if is_busy:
-            self.msg_entry.config(state="disabled")
-            self.btn_stop.config(state="normal", bg="#ff0000", fg="#ffffff")
-        else:
-            self.msg_entry.config(state="normal")
-            self.btn_stop.config(state="disabled", bg="#330000", fg="#ff0000")
-            self.stop_flag = False
-
-    def log_system(self, text): self.msg_queue.put(("system", text))
-
-    def load_chat_list(self):
-        self.chat_list.delete(0, tk.END)
-        if not os.path.exists(CHATS_DIR): return
-        self.files = sorted([f for f in os.listdir(CHATS_DIR) if f.endswith(".json")], reverse=True)
-        for f in self.files:
-            self.chat_list.insert(tk.END, f.replace(".json", ""))
-
-    def new_chat(self):
-        timestamp = datetime.datetime.now().strftime("Session_%Y-%m-%d_%H-%M-%S")
-        self.current_chat_file = f"{timestamp}.json"
-        self.chat_history = [CHAT_PROMPT]
-        self.save_memory()
-        self.load_chat_list()
-        self.chat_area.config(state='normal')
-        self.chat_area.delete('1.0', tk.END)
-        self.chat_area.config(state='disabled')
-        self.log_system(f"New Session: {timestamp}")
-
-    def on_chat_select(self, event):
-        w = event.widget
-        if not w.curselection(): return
-        index = w.curselection()[0]
-        filename = self.files[index]
-        self.current_chat_file = filename
-        self.load_memory()
-        self.chat_area.config(state='normal')
-        self.chat_area.delete('1.0', tk.END)
-        for msg in self.chat_history:
-             if msg["role"] == "user": self.add_to_ui("user", msg["content"])
-             elif msg["role"] == "assistant": self.add_to_ui("jarvis", msg["content"])
-             elif "System Note" in msg["content"]: self.add_to_ui("system", msg["content"])
-        self.chat_area.config(state='disabled')
-        self.log_system(f"Loaded: {filename}")
-
-    def delete_chat(self):
-        if not self.current_chat_file: return
-        path = os.path.join(CHATS_DIR, self.current_chat_file)
-        if os.path.exists(path):
-            os.remove(path)
-            self.new_chat()
-    
-    def add_to_ui(self, role, text):
-        self.chat_area.config(state='normal')
-        tags = {"user": "user", "jarvis": "jarvis", "tool": "tool", "system": "system"}
-        
-        if role == "jarvis_partial":
-            # Stream directly to end
-            self.chat_area.insert(tk.END, text, "jarvis")
-        else:
-            # Standard message block
-            self.chat_area.insert(tk.END, f"\n{'> ' if role=='user' else ''}{text}\n", tags.get(role, "system"))
-            
-        self.chat_area.see(tk.END)
-        self.chat_area.config(state='disabled')
-
-    def process_queue(self):
-        try:
-            while True:
-                role, text = self.msg_queue.get_nowait()
-                self.add_to_ui(role, text)
-        except queue.Empty: pass
-        self.root.after(50, self.process_queue) # Faster refresh for streaming
+    # ...
 
     def send_text(self, event=None):
         if self.is_busy: return # Block input if busy
@@ -543,123 +417,67 @@ class JarvisUI:
         self.msg_entry.delete(0, tk.END)
         self.current_turn_id += 1
         self.msg_queue.put(("user", text))
+        
+        # RACE CONDITION FIX: Lock UI IMMEDIATELY
+        self.toggle_busy(True) 
         threading.Thread(target=self.brain_core, args=(text, "text", self.current_turn_id), daemon=True).start()
 
-    def brain_core(self, user_text, source, turn_id):
-        """The Main Decision Engine"""
-        if turn_id != self.current_turn_id: return
-        
-        self.toggle_busy(True) # Lock UI / Ignore Wake Word
-        self.stop_flag = False
-        
-        self.chat_history.append({"role": "user", "content": user_text})
-        
-        # Step 1: The Router - Is this a task?
-        is_task = self.check_intent(user_text)
-        
-        if self.stop_flag: 
-            self.toggle_busy(False)
-            return
-
-        if is_task:
-            self.log_system("Core: Task Detected. Switching to Engineering Mode.")
-            self.chat_history[0] = TOOL_PROMPT # Swap Brain to Engineer
-            self.run_tool_loop(source, turn_id)
-        else:
-            self.log_system("Core: Casual Chat Detected.")
-            self.chat_history[0] = CHAT_PROMPT # Swap Brain to Jarvis
-            self.generate_final_response(source, turn_id)
-        
-        if not self.stop_flag: self.toggle_busy(False) # Unlock if finished normally
-
-    def check_intent(self, text):
-        """Asks a tiny, fast instance of the LLM if this is a task"""
-        try:
-            payload = {
-                "messages": [
-                    {"role": "system", "content": "You are a classifier. Does the user input require searching the web, reading files, or writing files? Reply ONLY 'YES' or 'NO'."},
-                    {"role": "user", "content": text}
-                ],
-                "temperature": 0.0, "max_tokens": 5
-            }
-            res = requests.post(LM_STUDIO_URL, json=payload).json()
-            return "YES" in res['choices'][0]['message']['content'].upper()
-        except: return False
-
-    def run_tool_loop(self, source, turn_id):
-        """The Engineer Brain Loop"""
-        if turn_id != self.current_turn_id or self.stop_flag: return
-        
-        payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": 8000}
-        
-        try:
-            response = requests.post(LM_STUDIO_URL, json=payload)
-            if response.status_code != 200: return
-            content = response.json()['choices'][0]['message']['content']
-            
-            # Parse JSON
-            if "{" in content:
-                clean = content.replace("```json", "").replace("```", "").strip()
-                match = re.search(r'\{.*\}', clean, re.DOTALL)
-                if match:
-                    data = json.loads(match.group(), strict=False)
-                    
-                    if data.get("tool") == "done":
-                        # Task Finished! Swap Brain back to Jarvis for the summary
-                        self.log_system("Engineering Complete. Handing off to Jarvis.")
-                        self.chat_history[0] = CHAT_PROMPT
-                        self.generate_final_response(source, turn_id)
-                        return
-
-                    self.execute_tool(data, source, turn_id)
-                    return
-            
-            # If no JSON, assume it failed or is done, hand back to Jarvis
-            self.chat_history[0] = CHAT_PROMPT
-            self.generate_final_response(source, turn_id)
-            
-        except Exception as e:
-            self.log_system(f"Engineer Error: {e}")
+    # ...
 
     def execute_tool(self, data, source, turn_id):
-        if turn_id != self.current_turn_id or self.stop_flag: return
-        
-        name = data.get("tool")
-        args = data.get("args", {})
-        self.msg_queue.put(("tool", f"Running {name}..."))
-        
-        result = "Unknown Tool"
-        if name == "search_web": result = JarvisTools.search_web(args.get("query", ""))
-        elif name == "write_file": result = JarvisTools.write_file(args.get("filename"), args.get("content"))
-        elif name == "read_file": result = JarvisTools.read_file(args.get("filename"))
-        elif name == "list_files": result = JarvisTools.list_files(args.get("path"))
-        elif name == "deep_research": result = JarvisTools.deep_research(args.get("topic"))
-        elif name == "read_clipboard": result = JarvisTools.read_clipboard()
-        elif name == "launch_app": result = JarvisTools.launch_app(args.get("app_name"))
-        elif name == "system_control": result = JarvisTools.system_control(args.get("command"))
-        elif name == "run_python": result = JarvisTools.run_python(args.get("script_name"))
-        elif name == "copy_to_workspace": result = JarvisTools.copy_to_workspace(args.get("source_path"))
-        elif name == "scaffold_project": result = JarvisTools.scaffold_project(args.get("project_name"), args.get("stack"))
-        
-        # Append result as a system note for the AI
-        self.chat_history.append({"role": "user", "content": f"[System Note: Tool '{name}' returned: {result}]"})
-        
-        # Loop back to Engineer Brain
-        self.run_tool_loop(source, turn_id)
+        # ... (No changes here, just context) ...
+        pass
 
-    def speech_process(self):
-        """Dedicated Speech Worker to prevent blocking"""
+    def speech_synthesis_loop(self):
+        """Thread 1: Generates Audio from Text"""
         while True:
             text = self.speech_queue.get()
-            if text is None: break # Sentinel
+            if text is None: break
             
-            # Check Stop Flag before and during
             if self.stop_flag: 
                 self.speech_queue.task_done()
                 continue
+
+            try:
+                # Clean Markdown
+                clean_text = text.replace("*", "").replace("#", "")
                 
-            self.speak(text)
+                lang = "en-us"
+                detected_lang = detect(clean_text)
+                if detected_lang == 'fr': lang = "fr-fr"
+                elif detected_lang == 'ar':
+                    self.log_system("TTS: Arabic text detected (Muted).")
+                    self.speech_queue.task_done()
+                    continue
+
+                self.log_system(f"TTS: Synthesizing '{clean_text}'...")
+                samples, rate = self.kokoro.create(clean_text, voice=DEFAULT_VOICE, speed=1.0, lang=lang)
+                
+                if len(samples) > 0:
+                     self.audio_queue.put((samples, rate)) # Hand off to Player
+                
+            except Exception as e: self.log_system(f"TTS Gen Error: {e}")
+            
             self.speech_queue.task_done()
+
+    def audio_playback_loop(self):
+        """Thread 2: Plays Audio Objects"""
+        while True:
+            item = self.audio_queue.get()
+            if item is None: break
+            
+            samples, rate = item
+            if self.stop_flag:
+                self.audio_queue.task_done()
+                continue
+                
+            try:
+                # self.log_system("TTS: Playing...") 
+                sd.play(samples, rate)
+                sd.wait() # Blocking is fine here, Generator is running in parallel!
+            except Exception as e: self.log_system(f"Playback Error: {e}")
+            
+            self.audio_queue.task_done()
 
     def generate_final_response(self, source, turn_id):
         """The Jarvis Brain Speak - NOW WITH STREAMING"""
@@ -726,6 +544,23 @@ class JarvisUI:
             
         except Exception as e:
             self.log_system(f"Jarvis Error: {e}")
+
+    def brain_core(self, user_text, source, turn_id):
+        """The Main Decision Engine"""
+        if turn_id != self.current_turn_id: return
+        
+        # Redundant Safety Lock (Already locked in handle_audio/send_text)
+        self.toggle_busy(True) 
+        self.stop_flag = False
+        
+        self.chat_history.append({"role": "user", "content": user_text})
+        
+        # Step 1: The Router - Is this a task?
+        is_task = self.check_intent(user_text)
+        
+        if self.stop_flag: 
+            self.toggle_busy(False)
+            return
 
     # ... (Rest of standard functions: clear_memory, load_memory, save_memory, load_ai, toggle_listening, listen_loop, handle_audio_input, speak) ...
     def clear_memory(self):
