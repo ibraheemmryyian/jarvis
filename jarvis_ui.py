@@ -176,26 +176,51 @@ class JarvisTools:
         except Exception as e: return f"Error: {e}"
 
     @staticmethod
+    def fetch_page_content(url):
+        """Simple lightweight scraper to get text from a URL"""
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code != 200: return f"[Error: Status {res.status_code}]"
+            
+            # Simple HTML Strip (No BS4 dependency)
+            text = res.text
+            text = re.sub(r'<script.*?</script>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<style.*?</style>', '', text, flags=re.DOTALL)
+            text = re.sub(r'<[^>]+>', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+            return text[:4000] + "..." # Limit to 4kb per page
+        except Exception as e: return f"[Fetch Error: {e}]"
+
+    @staticmethod
     def deep_research(topic):
         """Runs a multi-phase research loop found on Arxiv and Web"""
         try:
-            aggregated = f"--- RESEARCH REPORT: {topic} ---\n"
+            aggregated = f"--- DEEP RESEARCH REPORT: {topic} ---\n"
+            aggregated += f"Generated: {datetime.datetime.now()}\n\n"
             
-            # Phase 1: High-Level Overview (Trusted Domains)
-            # We enforce English search to avoid regional junk like Zhihu unless requested
-            results = list(DDGS().text(f"{topic} overview site:wikipedia.org OR site:investopedia.com OR site:reuters.com", max_results=3))
-            aggregated += "\n[OVERVIEW]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            # Phase 1: Academic Sources (Arxiv, ResearchGate, Academia)
+            query_academic = f"{topic} (site:arxiv.org OR site:researchgate.net OR site:academia.edu OR site:sciencedirect.com)"
+            results = list(DDGS().text(query_academic, max_results=5))
             
-            # Phase 2: Academic/PDF Sources (Strict Filtering)
-            # Remove date restrictions to find ANY relevant papers
-            query_academic = f"{topic} filetype:pdf (site:arxiv.org OR site:edu OR site:org OR site:gov)"
-            results = list(DDGS().text(query_academic, max_results=4))
-            aggregated += "\n\n[ACADEMIC SOURCES]\n" + "\n".join([f"- {r['title']} (URL: {r['href']}): {r['body']}" for r in results])
+            aggregated += "\n### ACADEMIC SOURCES & ABSTRACTS\n"
+            for r in results:
+                aggregated += f"\nSOURCE: {r['title']}\nURL: {r['href']}\nSNIPPET: {r['body']}\n"
+                
+                # Try to fetch content if it looks like a page (not a PDF)
+                if not r['href'].endswith(".pdf"):
+                    content = JarvisTools.fetch_page_content(r['href'])
+                    aggregated += f"--- EXTRACTED CONTENT ---\n{content}\n-------------------------\n"
+
+            # Phase 2: Trusted Data (Wikipedia, Reuters, Gov)
+            query_trusted = f"{topic} site:wikipedia.org OR site:reuters.com OR site:gov"
+            results = list(DDGS().text(query_trusted, max_results=3))
             
-            # Phase 3: Statistics/Data (Targeted)
-            query_stats = f"{topic} statistics market size growth rate"
-            results = list(DDGS().text(query_stats, max_results=3))
-            aggregated += "\n\n[KEY DATA]\n" + "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+            aggregated += "\n\n### TRUSTED DATA & STATISTICS\n"
+            for r in results:
+                aggregated += f"\nSOURCE: {r['title']}\nURL: {r['href']}\nSNIPPET: {r['body']}\n"
+                content = JarvisTools.fetch_page_content(r['href'])
+                aggregated += f"--- EXTRACTED CONTENT ---\n{content}\n-------------------------\n"
             
             # SMART SAVE: Auto-save to Learning/ folder
             filename = f"Learning/Research_{topic.replace(' ', '_')}_{int(time.time())}.txt"
@@ -205,7 +230,7 @@ class JarvisTools:
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(aggregated)
             
-            return f"Research Complete. Full data saved to '{filename}'.\n\n[Preview Analysis]: {aggregated[:600]}..."
+            return f"Deep Research V2 Complete. Full scraped report ({len(aggregated)} chars) saved to '{filename}'.\n\n[Preview]: {aggregated[:500]}..."
         except Exception as e: return f"Research Error: {e}"
 
     @staticmethod
