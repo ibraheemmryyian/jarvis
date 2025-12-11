@@ -88,8 +88,16 @@ TOOL_PROMPT = {
         "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
         "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
         "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
-        "4. ORGANIZE: Use subfolders (e.g. 'project_x/main.py'). The system will create them for you.\n"
-        "5. ARCHITECT: If user says 'Build an MVP' or 'Make a website', start with 'scaffold_project', THEN write the specific code.\n"
+        "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
+        "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
+        "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
+        "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
+        "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
+        "4. ARCHITECT: If user says 'Build an MVP' or 'Make a website', start with 'scaffold_project'.\n"
+        "5. SMART ORGANIZATION: Unless told otherwise, ALWAYS organize your work into these folders:\n"
+        "   - 'Projects/': For coding tasks, MVPs, and tools (e.g. 'Projects/AutoTrader/main.py').\n"
+        "   - 'Learning/': For research papers, deep dives, and study notes (e.g. 'Learning/QuantumPhysics.pdf').\n"
+        "   - 'Personal/': For casual thoughts, journal entries, or random ideas.\n"
         "6. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
     )
 }
@@ -276,6 +284,10 @@ class JarvisTools:
         try:
             # Enforce Sandbox
             if os.path.isabs(project_name) or ".." in project_name: return "Error: Project must be in workspace."
+            
+            # SMART ORGANIZATION: Default to 'Projects/' folder if not specified
+            if not project_name.startswith("Projects/") and not "/" in project_name:
+                project_name = f"Projects/{project_name}"
             
             base_path = os.path.join(WORKSPACE_DIR, project_name)
             os.makedirs(base_path, exist_ok=True)
