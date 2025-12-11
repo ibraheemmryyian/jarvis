@@ -94,8 +94,18 @@ TOOL_PROMPT = {
         "2. COMPLEX TASKS: If task > 1 step, WRITE A PLAN first ('write_file', 'Plan.txt').\n"
         "3. ERROR HANDLING: If a tool fails, DO NOT GIVE UP. Analyze the error, fix the args, or try a different approach. You are an Engineer.\n"
         "4. SELF-CORRECTION: If 'read_file' fails, 'list_files' to check the name.\n"
+        "10. copy_to_workspace(source_path): Clones a generic file/folder path (e.g. 'C:/my_project') into your workspace for analysis/testing.\n"
+        "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
+        "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
+        "STRATEGY (THE AGENT PROTOCOL):\n"
+        "1. READ access to 'C:/'. Sandbox WRITE to workspace.\n"
+        "2. COMPLEX TASKS: If task > 1 step, WRITE A PLAN first ('write_file', 'Plan.txt').\n"
+        "3. ERROR HANDLING: If a tool fails, DO NOT GIVE UP. Analyze the error, fix the args, or try a different approach. You are an Engineer.\n"
+        "4. SELF-CORRECTION: If 'read_file' fails, 'list_files' to check the name.\n"
         "5. SMART ORGANIZATION: Projects/, Learning/, Personal/.\n"
-        "6. DONE: When finished, you MUST provide a detailed report.\n"
+        "6. CONTEXT & DETAIL: The user has unlimited context. DO NOT SUMMARIZE. Be EXHAUSTIVE.\n"
+        "   - When writing reports, include every detail, code snippet, and finding. Length is NOT a constraint.\n"
+        "7. DONE: When finished, you MUST provide a detailed report.\n"
         "   output: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:\\n...\\n\\nCHALLENGES:\\n...\\n\\nSOLUTIONS:\\n...\\n\\nFINAL RESULT:\\n...\"}}\n"
         "   Do NOT just say 'done'. The user wants a full handover document."
     )
@@ -184,7 +194,7 @@ class JarvisTools:
             text = re.sub(r'<style.*?</style>', '', text, flags=re.DOTALL)
             text = re.sub(r'<[^>]+>', ' ', text)
             text = re.sub(r'\s+', ' ', text).strip()
-            return text[:4000] + "..." # Limit to 4kb per page
+            return text[:50000] + "..." # Limit to 50kb per page (Massive)
         except Exception as e: return f"[Fetch Error: {e}]"
 
     @staticmethod
@@ -196,7 +206,7 @@ class JarvisTools:
             
             # Phase 1: Academic Sources (Arxiv, ResearchGate, Academia)
             query_academic = f"{topic} (site:arxiv.org OR site:researchgate.net OR site:academia.edu OR site:sciencedirect.com)"
-            results = list(DDGS().text(query_academic, max_results=5))
+            results = list(DDGS().text(query_academic, max_results=10)) # Increased to 10
             
             aggregated += "\n### ACADEMIC SOURCES & ABSTRACTS\n"
             for r in results:
@@ -209,7 +219,7 @@ class JarvisTools:
 
             # Phase 2: Trusted Data (Wikipedia, Reuters, Gov)
             query_trusted = f"{topic} site:wikipedia.org OR site:reuters.com OR site:gov"
-            results = list(DDGS().text(query_trusted, max_results=3))
+            results = list(DDGS().text(query_trusted, max_results=5)) # Increased to 5
             
             aggregated += "\n\n### TRUSTED DATA & STATISTICS\n"
             for r in results:
@@ -383,6 +393,9 @@ class JarvisUI:
         self.load_chat_list()
         if not self.current_chat_file: self.new_chat()
         
+        # Bind Escape Key for Emergency Stop
+        self.root.bind("<Escape>", lambda e: self.stop_action())
+        
         threading.Thread(target=self.load_ai, daemon=True).start()
         threading.Thread(target=self.speech_synthesis_loop, daemon=True).start() # Thread 1: Generate
         threading.Thread(target=self.audio_playback_loop, daemon=True).start()   # Thread 2: Play
@@ -402,6 +415,18 @@ class JarvisUI:
         with self.speech_queue.mutex: self.speech_queue.queue.clear()
         with self.audio_queue.mutex: self.audio_queue.queue.clear()
         with self.msg_queue.mutex: self.msg_queue.queue.clear()
+
+    def run_tool_loop(self, source, turn_id):
+        """The Engineer Brain Loop"""
+        if turn_id != self.current_turn_id or self.stop_flag: return
+        
+        # Power Mode: Unlimited Tokens (-1) for massive reports
+        payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": -1}
+        
+        try:
+            response = requests.post(LM_STUDIO_URL, json=payload)
+            if response.status_code != 200: return
+            content = response.json()['choices'][0]['message']['content']
 
     # ...
 
