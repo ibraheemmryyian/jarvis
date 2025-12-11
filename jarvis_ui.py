@@ -89,20 +89,15 @@ TOOL_PROMPT = {
         "10. copy_to_workspace(source_path): Clones a generic file/folder path (e.g. 'C:/my_project') into your workspace for analysis/testing.\n"
         "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
-        "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
-        "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
-        "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
-        "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY: 1. You have READ access to the user's entire PC. Use 'list_files' to explore folders if requested.\n"
-        "2. If user asks for a file, checking if it exists is NOT ENOUGH. You must read it.\n"
-        "3. If it is empty or contains 'No results', you MUST use 'search_web' to get real content, then 'write_file' to OVERWRITE it.\n"
-        "4. ARCHITECT: If user says 'Build an MVP' or 'Make a website', start with 'scaffold_project'.\n"
-        "5. SMART ORGANIZATION: Unless told otherwise, ALWAYS organize your work into these folders:\n"
-        "   - 'Projects/': For coding tasks, MVPs, and tools (e.g. 'Projects/AutoTrader/main.py').\n"
-        "   - 'Learning/': For research papers, deep dives, and study notes (e.g. 'Learning/QuantumPhysics.pdf').\n"
-        "   - 'Personal/': For casual thoughts, journal entries, or random ideas.\n"
-        "6. If task is complete, output: {\"tool\": \"done\", \"args\": {}}"
+        "STRATEGY (THE AGENT PROTOCOL):\n"
+        "1. READ access to 'C:/'. Sandbox WRITE to workspace.\n"
+        "2. COMPLEX TASKS: If task > 1 step, WRITE A PLAN first ('write_file', 'Plan.txt').\n"
+        "3. ERROR HANDLING: If a tool fails, DO NOT GIVE UP. Analyze the error, fix the args, or try a different approach. You are an Engineer.\n"
+        "4. SELF-CORRECTION: If 'read_file' fails, 'list_files' to check the name.\n"
+        "5. SMART ORGANIZATION: Projects/, Learning/, Personal/.\n"
+        "6. DONE: When finished, you MUST provide a detailed report.\n"
+        "   output: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:\\n...\\n\\nCHALLENGES:\\n...\\n\\nSOLUTIONS:\\n...\\n\\nFINAL RESULT:\\n...\"}}\n"
+        "   Do NOT just say 'done'. The user wants a full handover document."
     )
 }
 
@@ -536,6 +531,39 @@ class JarvisUI:
                 # Flush remaining buffer
                 if source == "voice" and sentence_buffer.strip() and not self.stop_flag:
                     self.speech_queue.put(sentence_buffer.strip())
+
+            # Check for tool calls in the full response
+            tool_pattern = r"```json\n({.*?})\n```"
+            match = re.search(tool_pattern, full_response, re.DOTALL)
+            
+            if match:
+                data = json.loads(match.group(1), strict=False) # Use group(1) to get content inside ```json```
+                
+                if data.get("tool") == "done":
+                    # Task Finished!
+                    report = data.get("args", {}).get("report", "")
+                    
+                    if report:
+                        # Bypass "Voice Brain" summary. Print the Engineer's technical report directly.
+                        self.log_system("Engineering Complete. Reporting results.")
+                        self.chat_history.append({"role": "assistant", "content": report})
+                        self.save_memory()
+                        
+                        # Add to UI as a 'jarvis' message (so it looks like he said it)
+                        self.msg_queue.put(("jarvis", report))
+                        
+                        # Speak the summary (First 2 sentences only to avoid reading 5 pages)
+                        first_sentence = report.split('\n')[0]
+                        self.speech_queue.put(f"Task Complete. {first_sentence}") 
+                    else:
+                        # Fallback to old behavior (Hand off to Chat Brain)
+                        self.log_system("Engineering Complete. Handing off to Jarvis.")
+                        self.chat_history[0] = CHAT_PROMPT
+                        self.generate_final_response(source, turn_id)
+                    return
+
+                self.execute_tool(data, source, turn_id)
+                return
 
             if not self.stop_flag:
                 self.chat_history.append({"role": "assistant", "content": full_response})
