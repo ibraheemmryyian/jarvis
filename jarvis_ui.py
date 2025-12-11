@@ -539,28 +539,41 @@ class JarvisUI:
             if match:
                 data = json.loads(match.group(1), strict=False) # Use group(1) to get content inside ```json```
                 
-                if data.get("tool") == "done":
-                    # Task Finished!
-                    report = data.get("args", {}).get("report", "")
-                    
-                    if report:
-                        # Bypass "Voice Brain" summary. Print the Engineer's technical report directly.
-                        self.log_system("Engineering Complete. Reporting results.")
-                        self.chat_history.append({"role": "assistant", "content": report})
-                        self.save_memory()
+                    if data.get("tool") == "done":
+                        # Task Finished!
+                        report = data.get("args", {}).get("report", "")
                         
-                        # Add to UI as a 'jarvis' message (so it looks like he said it)
-                        self.msg_queue.put(("jarvis", report))
-                        
-                        # Speak the summary (First 2 sentences only to avoid reading 5 pages)
-                        first_sentence = report.split('\n')[0]
-                        self.speech_queue.put(f"Task Complete. {first_sentence}") 
-                    else:
-                        # Fallback to old behavior (Hand off to Chat Brain)
-                        self.log_system("Engineering Complete. Handing off to Jarvis.")
-                        self.chat_history[0] = CHAT_PROMPT
-                        self.generate_final_response(source, turn_id)
-                    return
+                        if report:
+                            # 1. Save Full Report to File (The "Handover" Document)
+                            timestamp = int(time.time())
+                            report_file = f"Reports/Task_Report_{timestamp}.txt"
+                            full_path = os.path.join(WORKSPACE_DIR, report_file)
+                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            
+                            with open(full_path, "w", encoding="utf-8") as f:
+                                f.write(report)
+
+                            # 2. Extract Summary for Chat (First paragraph / section)
+                            summary = report.split('\n\n')[0] # Get first block
+                            display_text = f"✅ **Task Complete.**\n📄 Full Report: `Reports/{report_file}`\n\n{summary}"
+
+                            # 3. Log & Display
+                            self.log_system(f"Engineering Complete. Report saved to {report_file}.")
+                            self.chat_history.append({"role": "assistant", "content": display_text})
+                            self.save_memory()
+                            
+                            self.msg_queue.put(("jarvis", display_text))
+                            
+                            # 4. Speak (Briefly)
+                            # Speak only the first sentence of the summary
+                            first_sentence = summary.split('.')[0]
+                            self.speech_queue.put(f"Task finished. {first_sentence}.") 
+                        else:
+                            # Fallback (Simple Done)
+                            self.log_system("Engineering Complete. Handing off to Jarvis.")
+                            self.chat_history[0] = CHAT_PROMPT
+                            self.generate_final_response(source, turn_id)
+                        return
 
                 self.execute_tool(data, source, turn_id)
                 return
