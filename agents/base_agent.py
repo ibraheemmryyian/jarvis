@@ -39,13 +39,14 @@ class BaseAgent(ABC):
         return messages
     
     def call_llm(self, user_input: str, include_context: bool = True, json_mode: bool = False) -> str:
-        """Make a call to the local LLM server."""
+        """Make a call to the local LLM server with smart timeout handling."""
         messages = self._build_messages(user_input, include_context)
         
         payload = {
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": MAX_OUTPUT_TOKENS,
+            "stream": True  # Enable streaming for progress feedback
         }
         
         # Some models support response_format for structured output
@@ -53,15 +54,45 @@ class BaseAgent(ABC):
             payload["response_format"] = {"type": "json_object"}
         
         try:
-            # 30 minute timeout for full autonomous operations
-            response = requests.post(LM_STUDIO_URL, json=payload, timeout=1800)
+            # 90 minute timeout for full autonomous operations
+            # Large code generations can take 30+ minutes at slow inference speeds
+            response = requests.post(LM_STUDIO_URL, json=payload, timeout=5400, stream=True)
             if response.status_code != 200:
                 return f"[LLM Error: {response.status_code}]"
             
-            content = response.json()["choices"][0]["message"]["content"]
-            return content
+            # Stream the response and collect it
+            full_content = ""
+            token_count = 0
+            
+            for line in response.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith('data: '):
+                        data_str = line_str[6:]
+                        if data_str.strip() == '[DONE]':
+                            break
+                        try:
+                            data = json.loads(data_str)
+                            delta = data.get('choices', [{}])[0].get('delta', {})
+                            content = delta.get('content', '')
+                            if content:
+                                full_content += content
+                                token_count += 1
+                                # Progress indicator every 500 tokens
+                                if token_count % 500 == 0:
+                                    print(f"[LLM] Generating... {token_count} tokens")
+                        except json.JSONDecodeError:
+                            continue
+            
+            if token_count > 0:
+                print(f"[LLM] Complete: {token_count} tokens generated")
+            
+            return full_content if full_content else "[No content generated]"
+            
         except requests.exceptions.ConnectionError:
             return "[Error: LM Studio not running. Start it and load a model.]"
+        except requests.exceptions.Timeout:
+            return "[Error: LLM timeout after 90 minutes. Try a simpler task.]"
         except Exception as e:
             return f"[LLM Exception: {e}]"
     
