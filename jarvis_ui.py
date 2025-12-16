@@ -79,35 +79,24 @@ TOOL_PROMPT = {
         "Available Tools:\n"
         "1. search_web(query): Search internet for facts.\n"
         "2. write_file(filename, content): Save content to file. Use \\n for newlines.\n"
-        "3. read_file(filename): Read text from a file. Accepts ABSOLUTE paths (e.g. 'C:/Users/file.txt') or relative.\n"
-        "4. list_files(path): List files. Default is workspace. You can pass 'C:/' or any folder path.\n"
-        "5. deep_research(topic): Run a massive multi-step search for academic papers (Arxiv) and data.\n"
+        "3. read_file(filename): Read text from a file. Accepts ABSOLUTE paths or relative.\n"
+        "4. list_files(path): List files. Default is workspace. Can pass any folder path.\n"
+        "5. deep_research(topic): Run massive multi-step search for academic papers and data.\n"
         "6. read_clipboard(): Read text from clipboard.\n"
-        "7. launch_app(app_name): Open apps. Supported: spotify, chrome, notepad, calculator, explorer.\n"
-        "8. system_control(command): 'lock' (Lock PC), 'shutdown' (Shutdown PC).\n"
-        "9. run_python(script_name): Run a python script INSIDE your workspace. Returns stdout/stderr.\n"
-        "10. copy_to_workspace(source_path): Clones a generic file/folder path (e.g. 'C:/my_project') into your workspace for analysis/testing.\n"
-        "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
+        "7. launch_app(app_name): Open apps. Supported: spotify, chrome, notepad, calculator.\n"
+        "8. system_control(command): 'lock' or 'shutdown'.\n"
+        "9. run_python(script_name): Run a python script in workspace.\n"
+        "10. copy_to_workspace(source_path): Clone file/folder into workspace.\n"
+        "11. scaffold_project(project_name, stack): Create starter project. stack='frontend' or 'python'.\n"
+        "12. autonomous_task(objective): START A BIG AUTONOMOUS TASK. For building websites, apps, research projects. Runs in background with 10-step planning, QA, and self-healing. USE THIS for complex requests like 'build me a landing page'.\n"
+        "13. cofounder_task(task_type, objective): General co-founder tasks. task_type='research', 'writing', 'analysis', 'coding', or 'general'.\n"
+        "14. git_push(project_path, message): Commit and push project to GitHub.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY (THE AGENT PROTOCOL):\n"
-        "1. READ access to 'C:/'. Sandbox WRITE to workspace.\n"
-        "2. COMPLEX TASKS: If task > 1 step, WRITE A PLAN first ('write_file', 'Plan.txt').\n"
-        "3. ERROR HANDLING: If a tool fails, DO NOT GIVE UP. Analyze the error, fix the args, or try a different approach. You are an Engineer.\n"
-        "4. SELF-CORRECTION: If 'read_file' fails, 'list_files' to check the name.\n"
-        "10. copy_to_workspace(source_path): Clones a generic file/folder path (e.g. 'C:/my_project') into your workspace for analysis/testing.\n"
-        "11. scaffold_project(project_name, stack): Create a full starter project. Stack='frontend' or 'python'.\n"
-        "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
-        "STRATEGY (THE AGENT PROTOCOL):\n"
-        "1. READ access to 'C:/'. Sandbox WRITE to workspace.\n"
-        "2. COMPLEX TASKS: If task > 1 step, WRITE A PLAN first ('write_file', 'Plan.txt').\n"
-        "3. ERROR HANDLING: If a tool fails, DO NOT GIVE UP. Analyze the error, fix the args, or try a different approach. You are an Engineer.\n"
-        "4. SELF-CORRECTION: If 'read_file' fails, 'list_files' to check the name.\n"
-        "5. SMART ORGANIZATION: Projects/, Learning/, Personal/.\n"
-        "6. CONTEXT & DETAIL: The user has unlimited context. DO NOT SUMMARIZE. Be EXHAUSTIVE.\n"
-        "   - When writing reports, include every detail, code snippet, and finding. Length is NOT a constraint.\n"
-        "7. DONE: When finished, you MUST provide a detailed report.\n"
-        "   output: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:\\n...\\n\\nCHALLENGES:\\n...\\n\\nSOLUTIONS:\\n...\\n\\nFINAL RESULT:\\n...\"}}\n"
-        "   Do NOT just say 'done'. The user wants a full handover document."
+        "STRATEGY:\n"
+        "1. For COMPLEX tasks (build website, create app, research project): use autonomous_task(objective).\n"
+        "2. For simple tasks: use appropriate individual tools.\n"
+        "3. NEVER give up on errors. Analyze, fix, retry.\n"
+        "4. When done: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:...\\nRESULT:...\"}}"
     )
 }
 
@@ -362,6 +351,83 @@ class JarvisTools:
             else:
                 return "Unknown stack. Use 'frontend' or 'python'."
         except Exception as e: return f"Scaffold Error: {e}"
+    
+    @staticmethod
+    def autonomous_task(objective):
+        """
+        Execute a complex multi-step task autonomously.
+        Uses the full agent system: planning, execution, QA, self-healing.
+        Best for: building websites, research projects, code generation.
+        """
+        try:
+            from agents import autonomous_executor
+            import threading
+            
+            def run_in_background():
+                try:
+                    result = autonomous_executor.run(objective)
+                    print(f"[Autonomous] Task completed! Project: {result.get('project_path', 'N/A')}")
+                except Exception as e:
+                    print(f"[Autonomous] Error: {e}")
+            
+            # Run in background thread so UI doesn't freeze
+            thread = threading.Thread(target=run_in_background, daemon=True)
+            thread.start()
+            
+            return f"Started autonomous task: '{objective[:100]}...'\n\nThis will run in the background. Check progress with: read_file('.context/task_state.md')"
+        except Exception as e:
+            return f"Failed to start autonomous task: {e}"
+    
+    @staticmethod
+    def cofounder_task(task_type, objective):
+        """
+        General co-founder task - not just coding.
+        task_type: 'research', 'writing', 'analysis', 'coding', 'general'
+        """
+        try:
+            from agents import autonomous_executor
+            import threading
+            
+            # Prefix objective with task type for proper routing
+            full_objective = f"[{task_type.upper()}] {objective}"
+            
+            def run_in_background():
+                try:
+                    result = autonomous_executor.run(full_objective)
+                    print(f"[Co-founder] Task completed!")
+                except Exception as e:
+                    print(f"[Co-founder] Error: {e}")
+            
+            thread = threading.Thread(target=run_in_background, daemon=True)
+            thread.start()
+            
+            return f"Started {task_type} task: '{objective[:80]}...'\n\nRunning in background."
+        except Exception as e:
+            return f"Failed to start task: {e}"
+    
+    @staticmethod
+    def git_push(project_path, message=None):
+        """Commit and push changes to GitHub."""
+        try:
+            from agents import git_agent
+            
+            full_path = os.path.join(WORKSPACE_DIR, project_path)
+            if not os.path.exists(full_path):
+                return f"Project not found: {project_path}"
+            
+            # Commit
+            commit_result = git_agent.commit(full_path, message)
+            if not commit_result.get("success"):
+                return f"Commit failed: {commit_result.get('error', 'Unknown error')}"
+            
+            # Push
+            push_result = git_agent.push(full_path)
+            if push_result.get("success"):
+                return f"Pushed: {commit_result.get('message', 'Changes pushed')}"
+            else:
+                return f"Push failed: {push_result.get('stderr', 'Unknown error')}"
+        except Exception as e:
+            return f"Git error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
