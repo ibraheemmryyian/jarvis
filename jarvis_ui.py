@@ -675,8 +675,9 @@ class JarvisUI:
             response = requests.post(LM_STUDIO_URL, json=payload)
             if response.status_code != 200: return
             content = response.json()['choices'][0]['message']['content']
-
-    # ...
+        except Exception as e:
+            self.log_system(f"Tool loop error: {e}")
+            return
 
     def send_text(self, event=None):
         if self.is_busy: return # Block input if busy
@@ -812,7 +813,7 @@ class JarvisUI:
             if match:
                 data = json.loads(match.group(1), strict=False) # Use group(1) to get content inside ```json```
                 
-                    if data.get("tool") == "done":
+                if data.get("tool") == "done":
                         # Task Finished!
                         report = data.get("args", {}).get("report", "")
                         
@@ -875,8 +876,11 @@ class JarvisUI:
         if self.stop_flag: 
             self.toggle_busy(False)
             return
+        
+        # Step 2: Generate response
+        self.generate_final_response(source, turn_id)
+        self.toggle_busy(False)
 
-    # ... (Rest of standard functions: clear_memory, load_memory, save_memory, load_ai, toggle_listening, listen_loop, handle_audio_input, speak) ...
     def clear_memory(self):
         self.current_turn_id += 1
         self.chat_history = [CHAT_PROMPT]
