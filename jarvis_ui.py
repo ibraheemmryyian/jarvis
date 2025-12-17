@@ -74,38 +74,31 @@ CHAT_PROMPT = {
 TOOL_PROMPT = {
     "role": "system",
     "content": (
-        "You are a Function Calling Agent. You do not speak. You only output JSON. "
-        "Your job is to execute the user's request using the available tools.\n"
-        "Available Tools:\n"
-        "1. search_web(query): Search internet for facts.\n"
-        "2. write_file(filename, content): Save content to file. Use \\n for newlines.\n"
-        "3. read_file(filename): Read text from a file. Accepts ABSOLUTE paths or relative.\n"
-        "4. list_files(path): List files. Default is workspace. Can pass any folder path.\n"
-        "5. deep_research(topic): Run massive multi-step search for academic papers and data.\n"
-        "6. read_clipboard(): Read text from clipboard.\n"
-        "7. launch_app(app_name): Open apps. Supported: spotify, chrome, notepad, calculator.\n"
-        "8. system_control(command): 'lock' or 'shutdown'.\n"
-        "9. run_python(script_name): Run a python script in workspace.\n"
-        "10. copy_to_workspace(source_path): Clone file/folder into workspace.\n"
-        "11. scaffold_project(project_name, stack): Create starter project. stack='frontend' or 'python'.\n"
-        "12. autonomous_task(objective): START A BIG AUTONOMOUS TASK. For building websites, apps, research projects. Runs in background with 10-step planning, QA, and self-healing. USE THIS for complex requests like 'build me a landing page'.\n"
-        "13. cofounder_task(task_type, objective): General co-founder tasks. task_type='research', 'writing', 'analysis', 'coding', or 'general'.\n"
-        "14. git_push(project_path, message): Commit and push project to GitHub.\n"
-        "--- BUSINESS SUITE ---\n"
-        "15. research_papers(query, num_papers): Search academic papers on arXiv/Semantic Scholar. Returns citations, abstracts, key findings.\n"
-        "16. literature_review(topic): Generate a full literature review with citations and synthesis.\n"
-        "17. business_analysis(company, description, industry): Full business analysis: SWOT, BMC, market sizing, financials, Porter's 5 Forces.\n"
-        "18. competitor_analysis(company, industry): Analyze competitors, positioning, market share.\n"
-        "19. market_sizing(product, target_market): Calculate TAM/SAM/SOM with validation.\n"
-        "20. generate_pitch_deck(company, description, industry): Create investor-ready pitch deck (reveal.js HTML).\n"
-        "21. score_pitch_deck(slides_json): Score a pitch deck on content, visuals, flow, specificity.\n"
-        "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
+        "You are a Function Calling Agent. You output ONLY valid JSON. No explanations.\n"
+        "Execute the user's request using these tools:\n\n"
+        "TOOLS:\n"
+        "- search_web(query): Search internet\n"
+        "- write_file(filename, content): Save file\n"
+        "- read_file(filename): Read file\n"
+        "- list_files(path): List directory\n"
+        "- deep_research(topic): Academic research\n"
+        "- launch_app(app_name): Open app\n"
+        "- scaffold_project(project_name, stack): Create project ('frontend'/'python')\n"
+        "- autonomous_task(objective): BUILD COMPLEX PROJECTS (websites, apps)\n"
+        "- business_analysis(company, description, industry): Full business analysis\n"
+        "- generate_pitch_deck(company, description, industry): Create pitch deck\n"
+        "- done(report): Signal task completion\n\n"
+        "OUTPUT FORMAT (STRICT):\n"
+        '{"tool": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}\n\n'
+        "EXAMPLES:\n"
+        '{"tool": "autonomous_task", "args": {"objective": "Build a React dashboard with dark theme"}}\n'
+        '{"tool": "write_file", "args": {"filename": "hello.py", "content": "print(\'hi\')"}}\n'
+        '{"tool": "read_file", "args": {"filename": "README.md"}}\n'
+        '{"tool": "done", "args": {"report": "Task completed successfully"}}\n\n'
         "STRATEGY:\n"
-        "1. For COMPLEX tasks (build website, create app, research project): use autonomous_task(objective).\n"
-        "2. For BUSINESS tasks (analysis, pitch deck, market research): use business suite tools.\n"
-        "3. For simple tasks: use appropriate individual tools.\n"
-        "4. NEVER give up on errors. Analyze, fix, retry.\n"
-        "5. When done: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:...\\nRESULT:...\"}}"
+        "1. For BUILDING (website, app, dashboard): use autonomous_task\n"
+        "2. For SIMPLE tasks: use individual tools\n"
+        "3. When finished: use done(report)"
     )
 }
 
@@ -368,25 +361,35 @@ class JarvisTools:
         Execute a complex multi-step task autonomously.
         Uses the full agent system: planning, execution, QA, self-healing.
         Best for: building websites, research projects, code generation.
+        
+        NOW RUNS SYNCHRONOUSLY - Returns when complete.
         """
         try:
             from agents import autonomous_executor
-            import threading
             
-            def run_in_background():
-                try:
-                    result = autonomous_executor.run(objective)
-                    print(f"[Autonomous] Task completed! Project: {result.get('project_path', 'N/A')}")
-                except Exception as e:
-                    print(f"[Autonomous] Error: {e}")
+            print(f"[Autonomous] Starting task: {objective[:100]}...")
+            result = autonomous_executor.run(objective)
             
-            # Run in background thread so UI doesn't freeze
-            thread = threading.Thread(target=run_in_background, daemon=True)
-            thread.start()
+            # Format result for UI
+            project_path = result.get('project_path', 'N/A')
+            iterations = result.get('iterations', 0)
+            status = result.get('status', 'unknown')
             
-            return f"Started autonomous task: '{objective[:100]}...'\n\nThis will run in the background. Check progress with: read_file('.context/task_state.md')"
+            summary = f"""✅ AUTONOMOUS TASK COMPLETE
+
+**Project:** {project_path}
+**Iterations:** {iterations}
+**Status:** {status}
+
+**Files Created:**
+"""
+            for log_entry in result.get('log', [])[-10:]:
+                summary += f"- {log_entry}\n"
+            
+            return summary
+            
         except Exception as e:
-            return f"Failed to start autonomous task: {e}"
+            return f"❌ Autonomous task failed: {e}"
     
     @staticmethod
     def cofounder_task(task_type, objective):
