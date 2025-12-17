@@ -727,5 +727,420 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
         return f"<ul>{bullets}</ul>"
 
 
-# Singleton instance
+class PitchDeckScorer:
+    """
+    Scores pitch decks on investor-readiness.
+    
+    Scoring Dimensions:
+    1. Content Quality (25%) - Word count, specificity, jargon-free
+    2. Visual Density (20%) - Not too much text, proper whitespace
+    3. Story Flow (20%) - Logical progression, narrative arc
+    4. Specificity (20%) - Real numbers, concrete claims
+    5. Investor Readiness (15%) - Complete slides, ask clarity
+    """
+    
+    # Required slide IDs for a complete deck
+    REQUIRED_SLIDES = ["cover", "problem", "solution", "market", "business_model", 
+                       "traction", "team", "ask"]
+    
+    # Slides that MUST have specific numbers
+    SLIDES_NEEDING_NUMBERS = ["market", "traction", "financials", "ask"]
+    
+    # Red flag words that indicate vague/buzzword content
+    BUZZWORDS = [
+        "synergy", "leverage", "disrupt", "revolutionize", "paradigm",
+        "best-in-class", "world-class", "cutting-edge", "innovative",
+        "next-generation", "game-changing", "unique", "proprietary",
+        "scalable", "robust", "seamless"  # overused in pitch decks
+    ]
+    
+    def __init__(self):
+        self.weights = {
+            "content_quality": 0.25,
+            "visual_density": 0.20,
+            "story_flow": 0.20,
+            "specificity": 0.20,
+            "investor_readiness": 0.15
+        }
+    
+    def score(self, slides: List[Dict]) -> Dict:
+        """
+        Score a pitch deck on all dimensions.
+        
+        Args:
+            slides: List of slide dicts from PitchDeckGenerator
+            
+        Returns:
+            Dict with scores, feedback, and recommendations
+        """
+        result = {
+            "overall_score": 0,
+            "grade": "",
+            "dimensions": {},
+            "issues": [],
+            "strengths": [],
+            "recommendations": []
+        }
+        
+        # Score each dimension
+        result["dimensions"]["content_quality"] = self._score_content_quality(slides)
+        result["dimensions"]["visual_density"] = self._score_visual_density(slides)
+        result["dimensions"]["story_flow"] = self._score_story_flow(slides)
+        result["dimensions"]["specificity"] = self._score_specificity(slides)
+        result["dimensions"]["investor_readiness"] = self._score_investor_readiness(slides)
+        
+        # Calculate weighted overall score
+        for dim, data in result["dimensions"].items():
+            result["overall_score"] += data["score"] * self.weights[dim]
+        
+        result["overall_score"] = round(result["overall_score"], 1)
+        
+        # Assign grade
+        result["grade"] = self._get_grade(result["overall_score"])
+        
+        # Compile issues, strengths, recommendations
+        for dim, data in result["dimensions"].items():
+            result["issues"].extend(data.get("issues", []))
+            result["strengths"].extend(data.get("strengths", []))
+            result["recommendations"].extend(data.get("recommendations", []))
+        
+        # Limit to top priorities
+        result["issues"] = result["issues"][:5]
+        result["recommendations"] = result["recommendations"][:5]
+        result["strengths"] = result["strengths"][:3]
+        
+        return result
+    
+    def _score_content_quality(self, slides: List[Dict]) -> Dict:
+        """Score content quality: word count, clarity, jargon."""
+        score = 100
+        issues = []
+        strengths = []
+        recommendations = []
+        
+        total_words = 0
+        slides_over_limit = 0
+        buzzword_count = 0
+        
+        for slide in slides:
+            slide_words = 0
+            
+            # Count words in all text fields
+            for key in ["title", "subtitle", "stat", "differentiator", "key_benefit"]:
+                if slide.get(key):
+                    words = len(str(slide[key]).split())
+                    slide_words += words
+                    
+                    # Check for buzzwords
+                    for bw in self.BUZZWORDS:
+                        if bw.lower() in str(slide[key]).lower():
+                            buzzword_count += 1
+            
+            # Count content bullets
+            for bullet in slide.get("content", []):
+                words = len(bullet.split())
+                slide_words += words
+                if words > 6:
+                    score -= 3  # Penalty for long bullets
+                    
+                for bw in self.BUZZWORDS:
+                    if bw.lower() in bullet.lower():
+                        buzzword_count += 1
+            
+            total_words += slide_words
+            
+            # Check slide word count (ideal: 20-40 words)
+            if slide_words > 50:
+                slides_over_limit += 1
+                score -= 5
+        
+        # Buzz word penalties
+        if buzzword_count >= 5:
+            score -= 15
+            issues.append(f"Too many buzzwords ({buzzword_count}). Be more specific.")
+            recommendations.append("Replace buzzwords with concrete claims and numbers")
+        elif buzzword_count >= 2:
+            score -= 5
+            issues.append(f"{buzzword_count} buzzwords detected. Consider replacing.")
+        
+        # Word count analysis
+        avg_words_per_slide = total_words / max(len(slides), 1)
+        
+        if avg_words_per_slide < 15:
+            score -= 10
+            issues.append("Slides may be too sparse. Add more substance.")
+        elif avg_words_per_slide > 45:
+            score -= 15
+            issues.append(f"Too wordy ({int(avg_words_per_slide)} words/slide avg). Investors skim.")
+            recommendations.append("Cut each slide to max 30 words")
+        else:
+            strengths.append(f"Good word density ({int(avg_words_per_slide)} words/slide)")
+        
+        if slides_over_limit == 0:
+            strengths.append("All slides within word limits")
+        
+        return {
+            "score": max(0, min(100, score)),
+            "issues": issues,
+            "strengths": strengths,
+            "recommendations": recommendations,
+            "details": {
+                "total_words": total_words,
+                "avg_words_per_slide": round(avg_words_per_slide, 1),
+                "buzzword_count": buzzword_count
+            }
+        }
+    
+    def _score_visual_density(self, slides: List[Dict]) -> Dict:
+        """Score visual density: not too crowded, proper structure."""
+        score = 100
+        issues = []
+        strengths = []
+        recommendations = []
+        
+        for slide in slides:
+            bullets = slide.get("content", [])
+            
+            # Too many bullets
+            if len(bullets) > 4:
+                score -= 10
+                issues.append(f"Slide '{slide.get('id', 'unknown')}' has {len(bullets)} bullets (max 4)")
+            
+            # Check for long bullets (visual clutter)
+            long_bullets = sum(1 for b in bullets if len(b.split()) > 6)
+            if long_bullets >= 2:
+                score -= 5
+        
+        # Check slide count
+        if len(slides) < 10:
+            issues.append(f"Only {len(slides)} slides. Consider adding detail.")
+            score -= 10
+        elif len(slides) > 14:
+            issues.append(f"{len(slides)} slides is too many. Target 10-12.")
+            score -= 10
+            recommendations.append("Combine or cut slides to reach 10-12 total")
+        else:
+            strengths.append(f"Good slide count ({len(slides)} slides)")
+        
+        return {
+            "score": max(0, min(100, score)),
+            "issues": issues,
+            "strengths": strengths,
+            "recommendations": recommendations
+        }
+    
+    def _score_story_flow(self, slides: List[Dict]) -> Dict:
+        """Score narrative flow: logical progression, story arc."""
+        score = 100
+        issues = []
+        strengths = []
+        recommendations = []
+        
+        slide_ids = [s.get("id", "") for s in slides]
+        
+        # Check for correct order
+        ideal_order = ["cover", "problem", "solution", "market", "product", 
+                      "business_model", "traction", "competition", "team", 
+                      "financials", "ask", "contact"]
+        
+        # Problem should come before solution
+        if "problem" in slide_ids and "solution" in slide_ids:
+            if slide_ids.index("problem") > slide_ids.index("solution"):
+                score -= 15
+                issues.append("Problem should come before Solution")
+        
+        # Ask should be near the end
+        if "ask" in slide_ids:
+            ask_position = slide_ids.index("ask")
+            if ask_position < len(slides) - 3:
+                score -= 10
+                issues.append("The Ask should be near the end")
+        
+        # Cover should be first
+        if slides and slides[0].get("id") != "cover":
+            score -= 10
+            issues.append("First slide should be the Cover")
+        else:
+            strengths.append("Strong opening with company title")
+        
+        # Market should come early
+        if "market" in slide_ids:
+            market_pos = slide_ids.index("market")
+            if market_pos <= 5:
+                strengths.append("Market opportunity positioned well")
+        
+        return {
+            "score": max(0, min(100, score)),
+            "issues": issues,
+            "strengths": strengths,
+            "recommendations": recommendations
+        }
+    
+    def _score_specificity(self, slides: List[Dict]) -> Dict:
+        """Score specificity: concrete numbers, real claims."""
+        score = 100
+        issues = []
+        strengths = []
+        recommendations = []
+        
+        # Number patterns
+        number_pattern = r'\$?\d+[KMBkmb%]?|\d+,\d+|\d+\.\d+'
+        
+        slides_with_numbers = 0
+        
+        for slide in slides:
+            slide_id = slide.get("id", "")
+            slide_text = json.dumps(slide).lower()
+            
+            has_number = bool(re.search(number_pattern, slide_text))
+            
+            if has_number:
+                slides_with_numbers += 1
+            
+            # Critical slides that MUST have numbers
+            if slide_id in self.SLIDES_NEEDING_NUMBERS:
+                if not has_number:
+                    score -= 15
+                    issues.append(f"'{slide_id}' slide needs specific numbers")
+                    recommendations.append(f"Add metrics to {slide_id} slide")
+        
+        # Market slide specifics
+        market_slide = next((s for s in slides if s.get("id") == "market"), None)
+        if market_slide:
+            if market_slide.get("tam") and "$" in str(market_slide.get("tam")):
+                strengths.append("Market size has dollar figures")
+            else:
+                score -= 10
+                issues.append("Market slide missing TAM/SAM/SOM values")
+        
+        # Ask slide specifics
+        ask_slide = next((s for s in slides if s.get("id") == "ask"), None)
+        if ask_slide:
+            if ask_slide.get("amount") and "$" in str(ask_slide.get("amount")):
+                strengths.append("Clear funding ask amount")
+            else:
+                score -= 10
+                issues.append("Ask slide missing specific funding amount")
+                recommendations.append("State exact amount: '$500K' not 'pre-seed round'")
+        
+        # Overall number density
+        number_ratio = slides_with_numbers / max(len(slides), 1)
+        if number_ratio >= 0.5:
+            strengths.append(f"{int(number_ratio*100)}% of slides have numbers")
+        elif number_ratio < 0.3:
+            score -= 10
+            issues.append("Not enough specific numbers")
+            recommendations.append("Add at least one number per slide")
+        
+        return {
+            "score": max(0, min(100, score)),
+            "issues": issues,
+            "strengths": strengths,
+            "recommendations": recommendations,
+            "details": {
+                "slides_with_numbers": slides_with_numbers,
+                "total_slides": len(slides)
+            }
+        }
+    
+    def _score_investor_readiness(self, slides: List[Dict]) -> Dict:
+        """Score investor readiness: completeness, professionalism."""
+        score = 100
+        issues = []
+        strengths = []
+        recommendations = []
+        
+        slide_ids = [s.get("id", "") for s in slides]
+        
+        # Check for required slides
+        missing = []
+        for req in self.REQUIRED_SLIDES:
+            if req not in slide_ids:
+                missing.append(req)
+                score -= 10
+        
+        if missing:
+            issues.append(f"Missing required slides: {', '.join(missing)}")
+            recommendations.append(f"Add slides for: {', '.join(missing)}")
+        else:
+            strengths.append("All required slides present")
+        
+        # Check team slide has actual names
+        team_slide = next((s for s in slides if s.get("id") == "team"), None)
+        if team_slide:
+            members = team_slide.get("members", [])
+            if not members:
+                score -= 10
+                issues.append("Team slide is empty")
+            else:
+                # Check for placeholder names
+                for m in members:
+                    name = str(m.get("name", "")).lower()
+                    if "name" in name or "tbd" in name or not m.get("name"):
+                        score -= 5
+                        issues.append("Team slide has placeholder names")
+                        break
+        
+        # Check for TBD/placeholder content
+        deck_text = json.dumps(slides).lower()
+        if "tbd" in deck_text or "placeholder" in deck_text or "lorem" in deck_text:
+            score -= 15
+            issues.append("Deck contains placeholder content (TBD, placeholder, lorem)")
+            recommendations.append("Replace all placeholders with real content")
+        
+        return {
+            "score": max(0, min(100, score)),
+            "issues": issues,
+            "strengths": strengths,
+            "recommendations": recommendations
+        }
+    
+    def _get_grade(self, score: float) -> str:
+        """Convert score to letter grade."""
+        if score >= 90:
+            return "A"
+        elif score >= 80:
+            return "B"
+        elif score >= 70:
+            return "C"
+        elif score >= 60:
+            return "D"
+        else:
+            return "F"
+    
+    def get_summary(self, result: Dict) -> str:
+        """Get human-readable summary of score."""
+        grade = result.get("grade", "?")
+        score = result.get("overall_score", 0)
+        
+        summary = f"""
+## Pitch Deck Score: {score}/100 (Grade: {grade})
+
+### Dimension Scores:
+"""
+        for dim, data in result.get("dimensions", {}).items():
+            dim_name = dim.replace("_", " ").title()
+            summary += f"- **{dim_name}**: {data['score']}/100\n"
+        
+        if result.get("strengths"):
+            summary += "\n### Strengths:\n"
+            for s in result["strengths"]:
+                summary += f"✅ {s}\n"
+        
+        if result.get("issues"):
+            summary += "\n### Issues:\n"
+            for i in result["issues"]:
+                summary += f"⚠️ {i}\n"
+        
+        if result.get("recommendations"):
+            summary += "\n### Top Recommendations:\n"
+            for r in result["recommendations"]:
+                summary += f"→ {r}\n"
+        
+        return summary
+
+
+# Singleton instances
 pitch_deck = PitchDeckGenerator()
+pitch_deck_scorer = PitchDeckScorer()
+

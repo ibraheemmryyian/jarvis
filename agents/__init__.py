@@ -26,7 +26,7 @@ from .git_agent import git_agent, GitAgent
 from .visual_qa import visual_qa, VisualQA
 from .academic_research import academic_research, AcademicResearch
 from .business_analyst import business_analyst, BusinessAnalyst
-from .pitch_deck import pitch_deck, PitchDeckGenerator
+from .pitch_deck import pitch_deck, PitchDeckGenerator, pitch_deck_scorer, PitchDeckScorer
 
 __all__ = [
     "context",
@@ -80,6 +80,9 @@ __all__ = [
     "BusinessAnalyst",
     "pitch_deck",
     "PitchDeckGenerator",
+    "pitch_deck_scorer",
+    "PitchDeckScorer",
 ]
+
 
 
