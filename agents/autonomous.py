@@ -20,6 +20,7 @@ from .project_manager import project_manager
 from .terminal import terminal
 from .code_indexer import code_indexer
 from .design_creativity import design_creativity
+from .visual_qa import visual_qa
 
 
 class AutonomousExecutor:
@@ -574,6 +575,28 @@ Format: Just the numbered list, nothing else."""
                 final_qa = self._run_qa_feedback(project_path, max_attempts=3)
                 qa_status = final_qa.get("overall_status", "unknown") if final_qa else "skipped"
                 self._log(f"Final QA: {qa_status}")
+                
+                # === PHASE 5: VISUAL QA ===
+                # Take headless screenshots and analyze with vision model
+                task_type = self._detect_task_type(objective)
+                if task_type == "coding" and ("web" in objective.lower() or "page" in objective.lower() or "site" in objective.lower() or "frontend" in objective.lower()):
+                    self._log("Phase 5: Visual QA (Headless)")
+                    try:
+                        visual_result = visual_qa.analyze_project(project_path)
+                        visual_score = visual_result.get("average_score", 0)
+                        visual_issues = visual_result.get("total_issues", 0)
+                        critical_issues = len(visual_result.get("critical_issues", []))
+                        
+                        if visual_score >= 70 and critical_issues == 0:
+                            self._log(f"Visual QA: PASSED (score: {visual_score}/100)")
+                        else:
+                            self._log(f"Visual QA: {visual_issues} issues found ({critical_issues} critical)")
+                            # Log recommendations
+                            for page in visual_result.get("pages_analyzed", []):
+                                for rec in page.get("analysis", {}).get("recommendations", [])[:2]:
+                                    self._log(f"  → {rec}")
+                    except Exception as e:
+                        self._log(f"Visual QA skipped: {e}")
             
             # Final summary
             self._log("=== AUTONOMOUS MODE COMPLETE ===")

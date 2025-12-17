@@ -23,6 +23,7 @@ from .code_reviewer import code_reviewer, CodeReviewer
 from .browser_tester import browser_tester, BrowserTester
 from .design_creativity import design_creativity, DesignCreativity
 from .git_agent import git_agent, GitAgent
+from .visual_qa import visual_qa, VisualQA
 
 __all__ = [
     "context",
@@ -67,4 +68,7 @@ __all__ = [
     "DesignCreativity",
     "git_agent",
     "GitAgent",
+    "visual_qa",
+    "VisualQA",
 ]
+
