@@ -868,29 +868,52 @@ class JarvisUI:
             self.msg_queue.put(("jarvis", content))
             self.chat_history.append({"role": "assistant", "content": content})
             
-            # Parse tool call from response
-            tool_pattern = r'```json\s*(\{.*?\})\s*```'
-            match = re.search(tool_pattern, content, re.DOTALL)
+            # Parse tool call from response - try multiple patterns
+            tool_data = None
             
+            # Pattern 1: Code block wrapped JSON
+            code_block_pattern = r'```json\s*(\{.*?\})\s*```'
+            match = re.search(code_block_pattern, content, re.DOTALL)
             if match:
                 try:
                     tool_data = json.loads(match.group(1))
-                    tool_name = tool_data.get("tool", "")
-                    args = tool_data.get("args", {})
-                    
-                    self.log_system(f"Executing tool: {tool_name}")
-                    
-                    if tool_name == "done":
-                        # Task complete
-                        self.log_system("Task completed!")
-                        self.chat_history[0] = CHAT_PROMPT  # Switch back to chat
-                        return
-                    
-                    # Execute the tool
-                    tools = JarvisTools()
-                    if hasattr(tools, tool_name):
+                except: pass
+            
+            # Pattern 2: Raw JSON with tool key
+            if not tool_data:
+                raw_json_pattern = r'(\{"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\})'
+                match = re.search(raw_json_pattern, content, re.DOTALL)
+                if match:
+                    try:
+                        tool_data = json.loads(match.group(1))
+                    except: pass
+            
+            # Pattern 3: Try parsing entire content as JSON
+            if not tool_data:
+                try:
+                    tool_data = json.loads(content.strip())
+                except: pass
+            
+            if tool_data and "tool" in tool_data:
+                tool_name = tool_data.get("tool", "")
+                args = tool_data.get("args", {})
+                
+                self.log_system(f"Executing tool: {tool_name}")
+                
+                if tool_name == "done":
+                    # Task complete
+                    self.log_system("Task completed!")
+                    self.chat_history[0] = CHAT_PROMPT  # Switch back to chat
+                    return
+                
+                # Execute the tool
+                tools = JarvisTools()
+                if hasattr(tools, tool_name):
+                    try:
                         tool_func = getattr(tools, tool_name)
                         result = tool_func(**args) if args else tool_func()
+                        
+                        self.log_system(f"Tool result: {str(result)[:100]}...")
                         
                         # Add result to history and continue loop
                         self.chat_history.append({
@@ -900,11 +923,10 @@ class JarvisUI:
                         
                         # Continue the loop
                         self.run_tool_loop(source, turn_id)
-                    else:
-                        self.log_system(f"Unknown tool: {tool_name}")
-                        
-                except json.JSONDecodeError as e:
-                    self.log_system(f"JSON parse error: {e}")
+                    except Exception as e:
+                        self.log_system(f"Tool execution error: {e}")
+                else:
+                    self.log_system(f"Unknown tool: {tool_name}")
             else:
                 self.log_system("No tool call found in response")
                 
