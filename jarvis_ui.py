@@ -849,16 +849,65 @@ class JarvisUI:
         with self.msg_queue.mutex: self.msg_queue.queue.clear()
 
     def run_tool_loop(self, source, turn_id):
-        """The Engineer Brain Loop"""
+        """The Engineer Brain Loop - Executes tools until done"""
         if turn_id != self.current_turn_id or self.stop_flag: return
+        
+        self.log_system("Engineer loop started...")
         
         # Power Mode: Unlimited Tokens (-1) for massive reports
         payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": -1}
         
         try:
             response = requests.post(LM_STUDIO_URL, json=payload)
-            if response.status_code != 200: return
+            if response.status_code != 200: 
+                self.log_system(f"API Error: {response.status_code}")
+                return
             content = response.json()['choices'][0]['message']['content']
+            
+            # Display the response
+            self.msg_queue.put(("jarvis", content))
+            self.chat_history.append({"role": "assistant", "content": content})
+            
+            # Parse tool call from response
+            tool_pattern = r'```json\s*(\{.*?\})\s*```'
+            match = re.search(tool_pattern, content, re.DOTALL)
+            
+            if match:
+                try:
+                    tool_data = json.loads(match.group(1))
+                    tool_name = tool_data.get("tool", "")
+                    args = tool_data.get("args", {})
+                    
+                    self.log_system(f"Executing tool: {tool_name}")
+                    
+                    if tool_name == "done":
+                        # Task complete
+                        self.log_system("Task completed!")
+                        self.chat_history[0] = CHAT_PROMPT  # Switch back to chat
+                        return
+                    
+                    # Execute the tool
+                    tools = JarvisTools()
+                    if hasattr(tools, tool_name):
+                        tool_func = getattr(tools, tool_name)
+                        result = tool_func(**args) if args else tool_func()
+                        
+                        # Add result to history and continue loop
+                        self.chat_history.append({
+                            "role": "user", 
+                            "content": f"Tool Result:\n{result}"
+                        })
+                        
+                        # Continue the loop
+                        self.run_tool_loop(source, turn_id)
+                    else:
+                        self.log_system(f"Unknown tool: {tool_name}")
+                        
+                except json.JSONDecodeError as e:
+                    self.log_system(f"JSON parse error: {e}")
+            else:
+                self.log_system("No tool call found in response")
+                
         except Exception as e:
             self.log_system(f"Tool loop error: {e}")
             return
@@ -1061,8 +1110,18 @@ class JarvisUI:
             self.toggle_busy(False)
             return
         
-        # Step 2: Generate response
-        self.generate_final_response(source, turn_id)
+        if is_task:
+            # Switch to Engineer Mode - Use TOOL_PROMPT
+            self.log_system("Task detected - switching to Engineer Mode")
+            self.chat_history[0] = TOOL_PROMPT
+            
+            # Run the tool execution loop
+            self.run_tool_loop(source, turn_id)
+        else:
+            # Just chat - Use CHAT_PROMPT
+            self.chat_history[0] = CHAT_PROMPT
+            self.generate_final_response(source, turn_id)
+        
         self.toggle_busy(False)
 
     def clear_memory(self):
