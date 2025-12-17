@@ -39,9 +39,17 @@ Rules:
 
     def write_file(self, relative_path: str, content: str) -> str:
         """Write a file to the workspace."""
-        # Security: prevent path traversal
+        # Security: prevent path traversal (Unix and Windows)
         if ".." in relative_path or relative_path.startswith("/"):
             return f"Error: Invalid path '{relative_path}'"
+        
+        # Security: prevent Windows absolute paths (C:\, D:\, etc.)
+        if len(relative_path) >= 2 and relative_path[1] == ':':
+            return f"Error: Absolute paths not allowed '{relative_path}'"
+        
+        # Security: prevent UNC paths (\\server\share)
+        if relative_path.startswith("\\\\"):
+            return f"Error: UNC paths not allowed"
         
         full_path = os.path.join(WORKSPACE_DIR, relative_path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)

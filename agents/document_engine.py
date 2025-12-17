@@ -56,6 +56,36 @@ class DocumentEngine:
         self.output_dir = os.path.join(WORKSPACE_DIR, "documents")
         os.makedirs(self.output_dir, exist_ok=True)
     
+    def _sanitize_filename(self, filename: str) -> str:
+        """
+        Sanitize filename to prevent path traversal attacks.
+        Removes dangerous characters and path components.
+        """
+        import re
+        
+        # Remove path separators and traversal
+        filename = filename.replace("/", "_").replace("\\", "_").replace("..", "_")
+        
+        # Remove Windows drive letters (C:, D:, etc.)
+        if len(filename) >= 2 and filename[1] == ':':
+            filename = filename[2:]
+        
+        # Only allow safe characters: alphanumeric, underscore, hyphen, dot
+        filename = re.sub(r'[^\w\-.]', '_', filename)
+        
+        # Prevent double extensions or hidden files
+        filename = filename.lstrip('.')
+        
+        # Limit length
+        if len(filename) > 100:
+            filename = filename[:100]
+        
+        # Default if empty
+        if not filename:
+            filename = "document"
+        
+        return filename
+    
     def get_capabilities(self) -> Dict:
         """Return available document types."""
         return {
@@ -134,8 +164,9 @@ class DocumentEngine:
                 for item in section.get("items", []):
                     doc.add_paragraph(item, style='List Number')
         
-        # Save
-        filepath = os.path.join(self.output_dir, f"{filename}.docx")
+        # Save (sanitize filename)
+        safe_filename = self._sanitize_filename(filename)
+        filepath = os.path.join(self.output_dir, f"{safe_filename}.docx")
         doc.save(filepath)
         
         return {
@@ -240,8 +271,9 @@ class DocumentEngine:
                 chart.set_categories(categories)
                 ws.add_chart(chart, "E5")
         
-        # Save
-        filepath = os.path.join(self.output_dir, f"{filename}.xlsx")
+        # Save (sanitize filename)
+        safe_filename = self._sanitize_filename(filename)
+        filepath = os.path.join(self.output_dir, f"{safe_filename}.xlsx")
         wb.save(filepath)
         
         return {
@@ -303,7 +335,8 @@ class DocumentEngine:
         if not PDF_AVAILABLE:
             return {"error": "reportlab not installed. Run: pip install reportlab"}
         
-        filepath = os.path.join(self.output_dir, f"{filename}.pdf")
+        safe_filename = self._sanitize_filename(filename)
+        filepath = os.path.join(self.output_dir, f"{safe_filename}.pdf")
         doc = SimpleDocTemplate(filepath, pagesize=letter)
         styles = getSampleStyleSheet()
         
