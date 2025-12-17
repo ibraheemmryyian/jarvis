@@ -33,6 +33,7 @@ from .content_writer import content_writer, ContentWriter
 from .daily_briefing import daily_briefing, DailyBriefing
 from .email_agent import email_agent, EmailAgent
 from .calendar_agent import calendar_agent, CalendarAgent
+from .slack_agent import slack_agent, SlackAgent
 
 __all__ = [
     "context",
@@ -99,7 +100,10 @@ __all__ = [
     "EmailAgent",
     "calendar_agent",
     "CalendarAgent",
+    "slack_agent",
+    "SlackAgent",
 ]
+
 
 
 
