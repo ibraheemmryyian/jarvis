@@ -32,15 +32,175 @@ class AutonomousExecutor:
     - Domain-segregated memory
     - Self-generated continuation prompts
     - Progress tracking across recycles
+    - PAUSE/RESUME capability
+    - Mid-flow plan modification
     """
     
     def __init__(self):
         self.is_running = False
+        self.is_paused = False  # NEW: Pause state
         self.current_task = None
         self.iteration = 0
         self.max_iterations = 50  # Safety limit
         self.log = []
         self.progress_callback = None
+        
+        # Pause/Resume state
+        self.pause_requested = False
+        self.resume_event = None  # Will be threading.Event()
+        self.pause_reason = ""
+        self.pending_modifications = []  # Plan changes during pause
+        self.saved_state = {}  # State snapshot on pause
+    
+    def pause(self, reason: str = "User requested pause") -> Dict:
+        """
+        Pause execution at the next safe point.
+        Returns current state.
+        """
+        if not self.is_running:
+            return {"success": False, "error": "Not currently running"}
+        
+        self.pause_requested = True
+        self.pause_reason = reason
+        self._log(f"⏸️ Pause requested: {reason}")
+        
+        return {
+            "success": True,
+            "message": "Will pause after current step completes",
+            "current_step": self.iteration,
+            "reason": reason
+        }
+    
+    def resume(self, modifications: List[str] = None) -> Dict:
+        """
+        Resume paused execution, optionally with plan modifications.
+        
+        Args:
+            modifications: List of changes to apply to the plan
+        """
+        if not self.is_paused:
+            return {"success": False, "error": "Not currently paused"}
+        
+        if modifications:
+            self.pending_modifications.extend(modifications)
+            self._log(f"📝 {len(modifications)} modifications queued")
+        
+        self.is_paused = False
+        self.pause_requested = False
+        
+        # Signal resume if using threading
+        if self.resume_event:
+            self.resume_event.set()
+        
+        self._log("▶️ Resuming execution")
+        
+        return {
+            "success": True,
+            "message": "Execution resumed",
+            "modifications_applied": len(modifications) if modifications else 0
+        }
+    
+    def get_state(self) -> Dict:
+        """Get current execution state (useful when paused)."""
+        from .recycler import recycler
+        progress = recycler.get_progress()
+        
+        return {
+            "is_running": self.is_running,
+            "is_paused": self.is_paused,
+            "pause_reason": self.pause_reason if self.is_paused else None,
+            "current_iteration": self.iteration,
+            "max_iterations": self.max_iterations,
+            "objective": progress.get("objective", ""),
+            "completed_steps": progress.get("completed_steps", []),
+            "pending_steps": progress.get("pending_steps", []),
+            "percent_complete": progress.get("percent", 0),
+            "pending_modifications": self.pending_modifications,
+            "log_tail": self.log[-10:] if self.log else []
+        }
+    
+    def modify_plan(self, action: str, step: str = None, position: int = None) -> Dict:
+        """
+        Modify the execution plan mid-flow.
+        
+        Args:
+            action: "add", "remove", "insert", "replace"
+            step: The step text
+            position: For insert, where to insert
+        """
+        from .recycler import recycler
+        
+        if action == "add":
+            recycler.pending_steps.append(step)
+            self._log(f"📌 Added step: {step}")
+        elif action == "remove" and step:
+            if step in recycler.pending_steps:
+                recycler.pending_steps.remove(step)
+                self._log(f"❌ Removed step: {step}")
+        elif action == "insert" and position is not None:
+            recycler.pending_steps.insert(position, step)
+            self._log(f"📍 Inserted step at {position}: {step}")
+        elif action == "replace" and position is not None:
+            if position < len(recycler.pending_steps):
+                old = recycler.pending_steps[position]
+                recycler.pending_steps[position] = step
+                self._log(f"🔄 Replaced step {position}: {old} → {step}")
+        
+        return {"success": True, "pending_steps": recycler.pending_steps}
+    
+    def add_note(self, note: str) -> Dict:
+        """Add a note to the execution log (useful during pause)."""
+        self._log(f"📝 Note: {note}")
+        
+        # Also save to memory
+        from .memory import memory
+        memory.save_fact(note, category="execution_notes")
+        
+        return {"success": True}
+    
+    def _check_pause(self) -> bool:
+        """
+        Check if we should pause. Called between steps.
+        Returns True if paused, False to continue.
+        """
+        if self.pause_requested:
+            self.is_paused = True
+            self.pause_requested = False
+            
+            # Save state
+            from .recycler import recycler
+            self.saved_state = {
+                "iteration": self.iteration,
+                "progress": recycler.get_progress(),
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            self._log(f"⏸️ PAUSED at step {self.iteration}")
+            self._log(f"   Reason: {self.pause_reason}")
+            self._log("   Use executor.resume() to continue")
+            self._log("   Use executor.modify_plan() to change steps")
+            
+            # If using threading, wait for resume
+            if self.resume_event:
+                import threading
+                self.resume_event = threading.Event()
+                self.resume_event.wait()  # Block until resumed
+            
+            return True
+        
+        return False
+    
+    def _apply_pending_modifications(self):
+        """Apply any modifications queued during pause."""
+        if self.pending_modifications:
+            self._log(f"📝 Applying {len(self.pending_modifications)} modifications")
+            for mod in self.pending_modifications:
+                # Parse modification string
+                if mod.startswith("add:"):
+                    self.modify_plan("add", mod[4:].strip())
+                elif mod.startswith("remove:"):
+                    self.modify_plan("remove", mod[7:].strip())
+            self.pending_modifications = []
     
     def _log(self, msg: str):
         """Log with timestamp."""

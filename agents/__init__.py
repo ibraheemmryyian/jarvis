@@ -34,6 +34,7 @@ from .daily_briefing import daily_briefing, DailyBriefing
 from .email_agent import email_agent, EmailAgent
 from .calendar_agent import calendar_agent, CalendarAgent
 from .slack_agent import slack_agent, SlackAgent
+from .prompt_refiner import prompt_refiner, PromptRefiner
 
 __all__ = [
     "context",
