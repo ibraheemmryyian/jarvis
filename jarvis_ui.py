@@ -649,7 +649,196 @@ class JarvisUI:
         threading.Thread(target=self.audio_playback_loop, daemon=True).start()   # Thread 2: Play
         self.root.after(100, self.process_queue)
 
-    # ... [setup_ui, stop_action, toggle_busy, etc.] ...
+    def setup_ui(self):
+        """Build the complete UI layout."""
+        # Main container
+        main_frame = tk.Frame(self.root, bg="#000000")
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Sidebar for chat history
+        sidebar = tk.Frame(main_frame, bg="#111111", width=200)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+        sidebar.pack_propagate(False)
+        
+        # Chat list
+        tk.Label(sidebar, text="SESSIONS", bg="#111111", fg="#00ff41", 
+                 font=("Consolas", 10, "bold")).pack(pady=10)
+        
+        self.chat_listbox = tk.Listbox(sidebar, bg="#1a1a1a", fg="#00ff41",
+                                       font=("Consolas", 9), selectbackground="#003300",
+                                       borderwidth=0, highlightthickness=0)
+        self.chat_listbox.pack(fill=tk.BOTH, expand=True, padx=5)
+        self.chat_listbox.bind("<<ListboxSelect>>", self.select_chat)
+        
+        # New chat button
+        tk.Button(sidebar, text="+ NEW CHAT", bg="#003300", fg="#00ff41",
+                  font=("Consolas", 10, "bold"), borderwidth=0,
+                  command=self.new_chat).pack(fill=tk.X, padx=5, pady=5)
+        
+        # Main chat area
+        chat_frame = tk.Frame(main_frame, bg="#000000")
+        chat_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Title bar
+        title_bar = tk.Frame(chat_frame, bg="#000000")
+        title_bar.pack(fill=tk.X)
+        
+        tk.Label(title_bar, text="J.A.R.V.I.S", bg="#000000", fg="#00ff41",
+                 font=("Consolas", 20, "bold")).pack(side=tk.LEFT)
+        
+        self.status_label = tk.Label(title_bar, text="STANDBY", bg="#000000", fg="#666666",
+                                     font=("Consolas", 10))
+        self.status_label.pack(side=tk.RIGHT)
+        
+        # Chat display
+        self.chat_area = scrolledtext.ScrolledText(chat_frame, wrap=tk.WORD, 
+                                                    bg="#0a0a0a", fg="#00ff41",
+                                                    font=("Consolas", 11),
+                                                    insertbackground="#00ff41",
+                                                    borderwidth=0)
+        self.chat_area.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.chat_area.config(state='disabled')
+        
+        # Input area
+        input_frame = tk.Frame(chat_frame, bg="#000000")
+        input_frame.pack(fill=tk.X)
+        
+        self.msg_entry = tk.Entry(input_frame, bg="#1a1a1a", fg="#00ff41",
+                                  font=("Consolas", 12), insertbackground="#00ff41",
+                                  borderwidth=0)
+        self.msg_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=10, ipadx=10)
+        self.msg_entry.bind("<Return>", self.send_text)
+        
+        tk.Button(input_frame, text="SEND", bg="#003300", fg="#00ff41",
+                  font=("Consolas", 10, "bold"), borderwidth=0,
+                  command=self.send_text).pack(side=tk.LEFT, padx=(5, 0), ipady=8, ipadx=15)
+        
+        # Control buttons
+        control_frame = tk.Frame(chat_frame, bg="#000000")
+        control_frame.pack(fill=tk.X, pady=10)
+        
+        self.btn_toggle = tk.Button(control_frame, text="INITIATE LISTENING", 
+                                     bg="#003300", fg="#00ff41",
+                                     font=("Consolas", 10, "bold"), borderwidth=0,
+                                     command=self.toggle_listening, state="disabled")
+        self.btn_toggle.pack(side=tk.LEFT, ipady=8, ipadx=15)
+        
+        tk.Button(control_frame, text="CLEAR MEMORY", bg="#330000", fg="#ff4444",
+                  font=("Consolas", 10, "bold"), borderwidth=0,
+                  command=self.clear_memory).pack(side=tk.RIGHT, ipady=8, ipadx=15)
+        
+        tk.Button(control_frame, text="STOP", bg="#660000", fg="#ff0000",
+                  font=("Consolas", 10, "bold"), borderwidth=0,
+                  command=self.stop_action).pack(side=tk.RIGHT, padx=5, ipady=8, ipadx=15)
+        
+        # System log
+        self.system_log = tk.Text(chat_frame, height=4, bg="#0a0a0a", fg="#666666",
+                                  font=("Consolas", 9), borderwidth=0)
+        self.system_log.pack(fill=tk.X)
+        self.system_log.config(state='disabled')
+        
+    def log_system(self, msg):
+        """Log system message."""
+        self.system_log.config(state='normal')
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        self.system_log.insert(tk.END, f"[{timestamp}] {msg}\n")
+        self.system_log.see(tk.END)
+        self.system_log.config(state='disabled')
+        
+    def toggle_busy(self, state):
+        """Toggle busy state."""
+        self.is_busy = state
+        if state:
+            self.status_label.config(text="PROCESSING...", fg="#ffaa00")
+            self.msg_entry.config(state='disabled')
+        else:
+            self.status_label.config(text="READY", fg="#00ff41")
+            self.msg_entry.config(state='normal')
+            
+    def process_queue(self):
+        """Process message queue for UI updates."""
+        try:
+            while True:
+                msg_type, content = self.msg_queue.get_nowait()
+                
+                self.chat_area.config(state='normal')
+                
+                if msg_type == "user":
+                    self.chat_area.insert(tk.END, f"\n[YOU] {content}\n", "user")
+                elif msg_type == "jarvis":
+                    self.chat_area.insert(tk.END, f"\n[JARVIS] {content}\n", "jarvis")
+                elif msg_type == "jarvis_partial":
+                    self.chat_area.insert(tk.END, content)
+                elif msg_type == "system":
+                    self.chat_area.insert(tk.END, f"\n[SYSTEM] {content}\n", "system")
+                    
+                self.chat_area.see(tk.END)
+                self.chat_area.config(state='disabled')
+                
+        except queue.Empty:
+            pass
+            
+        self.root.after(100, self.process_queue)
+        
+    def load_chat_list(self):
+        """Load saved chats into sidebar."""
+        self.chat_listbox.delete(0, tk.END)
+        if os.path.exists(CHATS_DIR):
+            for f in sorted(os.listdir(CHATS_DIR), reverse=True):
+                if f.endswith('.json'):
+                    self.chat_listbox.insert(tk.END, f.replace('.json', ''))
+        
+        if self.chat_listbox.size() > 0:
+            self.chat_listbox.select_set(0)
+            self.current_chat_file = self.chat_listbox.get(0) + '.json'
+            self.load_memory()
+            
+    def select_chat(self, event):
+        """Handle chat selection from listbox."""
+        selection = self.chat_listbox.curselection()
+        if selection:
+            self.current_chat_file = self.chat_listbox.get(selection[0]) + '.json'
+            self.load_memory()
+            self.display_chat_history()
+            
+    def new_chat(self):
+        """Create a new chat session."""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.current_chat_file = f"chat_{timestamp}.json"
+        self.chat_history = [CHAT_PROMPT]
+        self.save_memory()
+        self.load_chat_list()
+        
+        # Clear display
+        self.chat_area.config(state='normal')
+        self.chat_area.delete('1.0', tk.END)
+        self.chat_area.config(state='disabled')
+        
+        self.log_system(f"New session: {self.current_chat_file}")
+        
+    def display_chat_history(self):
+        """Display loaded chat history in chat area."""
+        self.chat_area.config(state='normal')
+        self.chat_area.delete('1.0', tk.END)
+        
+        for msg in self.chat_history[1:]:  # Skip system prompt
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            
+            if role == 'user':
+                self.chat_area.insert(tk.END, f"\n[YOU] {content}\n")
+            elif role == 'assistant':
+                self.chat_area.insert(tk.END, f"\n[JARVIS] {content}\n")
+                
+        self.chat_area.see(tk.END)
+        self.chat_area.config(state='disabled')
+        
+    def check_intent(self, text):
+        """Check if text is a task or just conversation."""
+        task_keywords = ['build', 'create', 'make', 'write', 'research', 'analyze', 
+                        'generate', 'search', 'find', 'code', 'deploy', 'launch']
+        text_lower = text.lower()
+        return any(kw in text_lower for kw in task_keywords)
 
     def stop_action(self):
         """Emergency Stop"""
