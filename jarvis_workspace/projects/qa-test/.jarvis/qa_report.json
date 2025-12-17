@@ -1,0 +1,30 @@
+{
+  "project": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\qa-test",
+  "timestamp": "2025-12-16T22:59:41.122237",
+  "file_results": [
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\qa-test\\src/index.html",
+      "type": "html",
+      "status": "pass",
+      "issues": [],
+      "suggestions": [
+        "Add meta viewport for mobile responsiveness"
+      ]
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\qa-test\\src/css/style.css",
+      "type": "css",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible missing semicolons at lines: [1]"
+        }
+      ],
+      "suggestions": []
+    }
+  ],
+  "overall_status": "warning",
+  "total_errors": 0,
+  "total_warnings": 1
+}

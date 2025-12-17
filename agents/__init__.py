@@ -27,6 +27,12 @@ from .visual_qa import visual_qa, VisualQA
 from .academic_research import academic_research, AcademicResearch
 from .business_analyst import business_analyst, BusinessAnalyst
 from .pitch_deck import pitch_deck, PitchDeckGenerator, pitch_deck_scorer, PitchDeckScorer
+# Enterprise Suite
+from .memory import memory, Memory
+from .content_writer import content_writer, ContentWriter
+from .daily_briefing import daily_briefing, DailyBriefing
+from .email_agent import email_agent, EmailAgent
+from .calendar_agent import calendar_agent, CalendarAgent
 
 __all__ = [
     "context",
@@ -82,7 +88,19 @@ __all__ = [
     "PitchDeckGenerator",
     "pitch_deck_scorer",
     "PitchDeckScorer",
+    # Enterprise Suite
+    "memory",
+    "Memory",
+    "content_writer",
+    "ContentWriter",
+    "daily_briefing",
+    "DailyBriefing",
+    "email_agent",
+    "EmailAgent",
+    "calendar_agent",
+    "CalendarAgent",
 ]
+
 
 
 

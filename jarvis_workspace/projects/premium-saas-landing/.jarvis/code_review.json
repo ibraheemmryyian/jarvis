@@ -1,0 +1,185 @@
+{
+  "project": "c:/Users/Imrry/Desktop/jarvis/jarvis_workspace/projects/premium-saas-landing",
+  "timestamp": "2025-12-17T00:28:32.014679",
+  "files_reviewed": [
+    {
+      "file": "src\\index.html",
+      "type": "html",
+      "lines": 430,
+      "errors": [],
+      "warnings": [
+        {
+          "severity": "warning",
+          "message": "Tag imbalance: 87 opening, 75 closing tags"
+        }
+      ],
+      "variables": [],
+      "functions": [],
+      "classes": [
+        {
+          "name": "feature-card",
+          "type": "CSS class",
+          "summary": "CSS class 'feature-card'"
+        },
+        {
+          "name": "testimonial-card",
+          "type": "CSS class",
+          "summary": "CSS class 'testimonial-card'"
+        },
+        {
+          "name": "testimonial-content",
+          "type": "CSS class",
+          "summary": "CSS class 'testimonial-content'"
+        },
+        {
+          "name": "logo",
+          "type": "CSS class",
+          "summary": "CSS class 'logo'"
+        },
+        {
+          "name": "hero-buttons",
+          "type": "CSS class",
+          "summary": "CSS class 'hero-buttons'"
+        },
+        {
+          "name": "container",
+          "type": "CSS class",
+          "summary": "CSS class 'container'"
+        },
+        {
+          "name": "section-title",
+          "type": "CSS class",
+          "summary": "CSS class 'section-title'"
+        },
+        {
+          "name": "features-section",
+          "type": "CSS class",
+          "summary": "CSS class 'features-section'"
+        },
+        {
+          "name": "fas",
+          "type": "CSS class",
+          "summary": "CSS class 'fas'"
+        },
+        {
+          "name": "fa-search",
+          "type": "CSS class",
+          "summary": "CSS class 'fa-search'"
+        },
+        {
+          "name": "testimonials",
+          "type": "CSS class",
+          "summary": "CSS class 'testimonials'"
+        },
+        {
+          "name": "author-avatar",
+          "type": "CSS class",
+          "summary": "CSS class 'author-avatar'"
+        },
+        {
+          "name": "btn",
+          "type": "CSS class",
+          "summary": "CSS class 'btn'"
+        },
+        {
+          "name": "btn-secondary",
+          "type": "CSS class",
+          "summary": "CSS class 'btn-secondary'"
+        },
+        {
+          "name": "hero-image",
+          "type": "CSS class",
+          "summary": "CSS class 'hero-image'"
+        },
+        {
+          "name": "testimonial-grid",
+          "type": "CSS class",
+          "summary": "CSS class 'testimonial-grid'"
+        },
+        {
+          "name": "fas",
+          "type": "CSS class",
+          "summary": "CSS class 'fas'"
+        },
+        {
+          "name": "fa-robot",
+          "type": "CSS class",
+          "summary": "CSS class 'fa-robot'"
+        },
+        {
+          "name": "fas",
+          "type": "CSS class",
+          "summary": "CSS class 'fas'"
+        },
+        {
+          "name": "fa-microphone-alt",
+          "type": "CSS class",
+          "summary": "CSS class 'fa-microphone-alt'"
+        },
+        {
+          "name": "fas",
+          "type": "CSS class",
+          "summary": "CSS class 'fas'"
+        },
+        {
+          "name": "fa-code",
+          "type": "CSS class",
+          "summary": "CSS class 'fa-code'"
+        },
+        {
+          "name": "testimonial-author",
+          "type": "CSS class",
+          "summary": "CSS class 'testimonial-author'"
+        },
+        {
+          "name": "hero",
+          "type": "CSS class",
+          "summary": "CSS class 'hero'"
+        },
+        {
+          "name": "fas",
+          "type": "CSS class",
+          "summary": "CSS class 'fas'"
+        },
+        {
+          "name": "fa-file-invoice-dollar",
+          "type": "CSS class",
+          "summary": "CSS class 'fa-file-invoice-dollar'"
+        },
+        {
+          "name": "feature-icon",
+          "type": "CSS class",
+          "summary": "CSS class 'feature-icon'"
+        },
+        {
+          "name": "author-info",
+          "type": "CSS class",
+          "summary": "CSS class 'author-info'"
+        },
+        {
+          "name": "btn",
+          "type": "CSS class",
+          "summary": "CSS class 'btn'"
+        },
+        {
+          "name": "features-grid",
+          "type": "CSS class",
+          "summary": "CSS class 'features-grid'"
+        },
+        {
+          "name": "hero-content",
+          "type": "CSS class",
+          "summary": "CSS class 'hero-content'"
+        }
+      ],
+      "imports": [],
+      "unused": [],
+      "missing_refs": [],
+      "documentation": "## src\\index.html\n\n**Type**: html | **Lines**: 430\n\n### Classes\n- `feature-card`: CSS class 'feature-card'\n- `testimonial-card`: CSS class 'testimonial-card'\n- `testimonial-content`: CSS class 'testimonial-content'\n- `logo`: CSS class 'logo'\n- `hero-buttons`: CSS class 'hero-buttons'\n- `container`: CSS class 'container'\n- `section-title`: CSS class 'section-title'\n- `features-section`: CSS class 'features-section'\n- `fas`: CSS class 'fas'\n- `fa-search`: CSS class 'fa-search'\n\n"
+    }
+  ],
+  "total_issues": 0,
+  "total_warnings": 1,
+  "code_quality_score": 98,
+  "summary": "## Code Review Summary\n\n**Quality Score**: 98/100 (A - Excellent)\n**Files Reviewed**: 1\n**Issues Found**: 0 errors, 1 warnings\n\n### Recommendations:\n- No critical syntax errors found\n\n\n"
+}

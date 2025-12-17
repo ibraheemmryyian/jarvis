@@ -1,0 +1,21 @@
+{
+  "project": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\premium-landing-page",
+  "timestamp": "2025-12-17T03:12:50.332151",
+  "file_results": [
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\premium-landing-page\\src/index.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 98, closes: 83)"
+        }
+      ],
+      "suggestions": []
+    }
+  ],
+  "overall_status": "warning",
+  "total_errors": 0,
+  "total_warnings": 1
+}

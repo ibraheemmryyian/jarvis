@@ -1,0 +1,10 @@
+{
+  "name": "premium-landing-page",
+  "slug": "premium-landing-page",
+  "stack": "vanilla",
+  "category": "frontend",
+  "created": "2025-12-17T02:37:36.068696",
+  "test_framework": null,
+  "entry_point": null,
+  "status": "initialized"
+}

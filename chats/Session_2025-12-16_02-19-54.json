@@ -1,0 +1,18 @@
+[
+  {
+    "role": "user",
+    "content": "hi"
+  },
+  {
+    "role": "assistant",
+    "content": "[Error: LM Studio not running. Start it and load a model.]"
+  },
+  {
+    "role": "user",
+    "content": "hey"
+  },
+  {
+    "role": "assistant",
+    "content": "<think>\nOkay, the user just said \"hey\" with a very brief context and active task description that's incomplete. \n\nHmm, judging by the abruptness, they might be testing my responsiveness or checking if I'm online. Alternatively, it could be an accidental message since the objective field is empty. The status shows it's in progress but started 20 minutes ago - interesting timing mismatch.\n\nGiven my system prompt emphasizes being concise and professional, I should acknowledge this while gently prompting for clarification without sounding dismissive. \n\nThe user seems to be either:\n1) A developer checking if the AI module initializes properly\n2) Someone who might have sent a half-formed message\n\nI'll respond neutrally but leave room for them to elaborate. No need to overthink - just confirm receipt and ask what they actually needed help with.\n</think>\nHello! How can I assist you today?"
+  }
+]

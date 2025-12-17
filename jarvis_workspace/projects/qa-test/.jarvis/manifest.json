@@ -1,0 +1,10 @@
+{
+  "name": "qa-test",
+  "slug": "qa-test",
+  "stack": "vanilla",
+  "category": "frontend",
+  "created": "2025-12-16T22:59:41.077977",
+  "test_framework": null,
+  "entry_point": null,
+  "status": "initialized"
+}
