@@ -1,11 +1,12 @@
-# 🧠 JARVIS AI Assistant
+# 🧠 JARVIS AI Platform
 
-**Your AI co-founder that runs locally, works autonomously, and has real personality.**
+**Your AI co-founder that runs locally, works autonomously, and builds itself.**
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/LLM-Qwen%203%2030B-green.svg" alt="LLM">
-  <img src="https://img.shields.io/badge/Status-Active-success.svg" alt="Status">
+  <img src="https://img.shields.io/badge/LLM-Local-green.svg" alt="LLM">
+  <img src="https://img.shields.io/badge/Agents-36-purple.svg" alt="Agents">
+  <img src="https://img.shields.io/badge/API%20Cost-$0-success.svg" alt="Cost">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -13,181 +14,196 @@
 
 ## ✨ What is Jarvis?
 
-Jarvis is a **locally-running AI assistant** with personality. Not just a chatbot - it's your co-founder that can:
+Jarvis is a **locally-running AI workforce platform** with 36 specialized agents. It's not a chatbot - it's a team of AI workers that can:
 
-- 🗣️ **Voice Interaction** - Wake word "Hey Jarvis", natural conversation
-- 🤖 **Autonomous Execution** - Give it a task, walk away, come back to results
-- 🔬 **Deep Research** - Multi-source academic and web research
-- 💻 **Code Generation** - Full-stack development with unique designs
-- 📝 **Writing & Analysis** - Content, reports, business analysis
+- 🗣️ **Voice Interaction** - "Hey Jarvis" wake word, natural conversation
+- 🤖 **Autonomous Execution** - Multi-step tasks with self-healing
+- 🔬 **Deep Research** - Academic papers, multi-source synthesis
+- 💻 **Code Generation** - Full-stack with unique designs
+- 📊 **Business Analysis** - SWOT, market sizing, pitch decks
+- 📝 **Content Writing** - Blogs, emails, social media
+- 📅 **Integrations** - Email, Calendar, Git, API
 - 🔒 **100% Local** - Your data never leaves your machine
-- 💰 **$0 API Costs** - Uses local LLM (LM Studio)
+- 💰 **$0 API Costs** - Uses local LLM
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.11+
-- [LM Studio](https://lmstudio.ai/) with Qwen 3 Coder 30B (or any local LLM)
-
-### Installation
-
 ```bash
+# Clone
 git clone https://github.com/ibraheemmryyian/jarvis.git
 cd jarvis
+
+# Install
 pip install -r requirements.txt
-```
 
-### Start LM Studio
-1. Open LM Studio
-2. Load your preferred model
-3. Start local server (port 1234)
-
-### Run Jarvis
-
-```bash
+# Start LM Studio with your model, then:
 python jarvis_ui.py
 ```
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture: 36 Specialized Agents
 
-### 26 Specialized Agents
+### Core Infrastructure
+| Agent | Purpose |
+|-------|---------|
+| `autonomous.py` | Multi-step task execution with planning |
+| `recycler.py` | Anti-bloat context management |
+| `orchestrator.py` | Task routing and coordination |
+| `router.py` | Intent classification |
+| `memory.py` | Persistent SQLite/Supabase storage |
 
-| Category | Agents |
-|----------|--------|
-| **Core** | Autonomous Executor, Recycler, Orchestrator, Router |
-| **Code** | Coder, Code Indexer, Code Reviewer, QA Agent |
-| **Execution** | Terminal (sandboxed), Project Manager, Git Agent |
-| **Testing** | Browser Tester |
-| **Research** | Deep Research, Brute Research, Synthesizer |
-| **Creativity** | Design Creativity (unique layouts + banned patterns) |
-| **Comms** | Personality, Notifications |
+### Coding Agents
+| Agent | Purpose |
+|-------|---------|
+| `coder.py` | Code generation |
+| `code_indexer.py` | Smart code search with AST |
+| `code_reviewer.py` | Code analysis and documentation |
+| `qa.py` | Quality assurance and auto-fix |
+| `browser_tester.py` | Headless Playwright testing |
+| `visual_qa.py` | Vision-based UI validation |
+| `design_creativity.py` | Unique layouts, banned patterns |
+| `terminal.py` | Sandboxed command execution |
+| `project_manager.py` | Project scaffolding |
+| `git_agent.py` | Git operations |
+| `github_agent.py` | GitHub API integration |
 
-### Project Structure
+### Research Agents
+| Agent | Purpose |
+|-------|---------|
+| `research.py` | General web research |
+| `brute_research.py` | 20+ source deep research |
+| `synthesis.py` | Cross-source analysis |
+| `academic_research.py` | arXiv, Semantic Scholar, CrossRef |
 
+### Business Agents
+| Agent | Purpose |
+|-------|---------|
+| `business_analyst.py` | SWOT, BMC, Porter's 5 Forces |
+| `pitch_deck.py` | Investor deck generation |
+| `pitch_deck_scorer.py` | Deck quality scoring (A-F) |
+| `content_writer.py` | Blog, email, social content |
+| `daily_briefing.py` | Morning summary system |
+
+### Integration Agents
+| Agent | Purpose |
+|-------|---------|
+| `email_agent.py` | Gmail OAuth integration |
+| `calendar_agent.py` | Google Calendar integration |
+
+### Support Agents
+| Agent | Purpose |
+|-------|---------|
+| `context_manager.py` | Token tracking |
+| `personality.py` | Jarvis persona |
+| `notifications.py` | Desktop alerts |
+| `jarvis_identity.py` | Self-knowledge |
+| `queue.py` | Task queue management |
+| `worker.py` | Background job processing |
+| `ops.py` | DevOps operations |
+| `base_agent.py` | Agent base class |
+| `config.py` | Centralized configuration |
+
+---
+
+## 🔌 API (FastAPI)
+
+```bash
+# Start API server
+uvicorn api.main:app --reload
 ```
-jarvis/
-├── agents/                 # 26 agent modules
-│   ├── autonomous.py       # Multi-step task executor
-│   ├── recycler.py         # Context management
-│   ├── terminal.py         # Sandboxed commands (4-layer security)
-│   ├── design_creativity.py # Unique layouts
-│   ├── git_agent.py        # Version control
-│   └── ...
-├── jarvis_ui.py            # Main UI
-├── jarvis_workspace/       # Generated projects
-└── tests/
-```
+
+### Endpoints
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/health` | Health check |
+| POST | `/memory/message` | Save message |
+| GET | `/memory/recall` | Smart recall |
+| POST | `/tasks` | Create task |
+| GET | `/briefing` | Daily briefing |
+| POST | `/content/blog` | Generate blog |
+| POST | `/content/email` | Generate email |
+| POST | `/business/pitch-deck` | Generate deck |
+| POST | `/business/analysis` | Full analysis |
+| POST | `/research/papers` | Search papers |
+| GET | `/agents` | List all agents |
 
 ---
 
 ## 💡 Usage Examples
 
-### Build a Website (Autonomous)
+### Autonomous Build
 ```
-"Build me a premium landing page for my SaaS product"
-```
-Jarvis will:
-1. Plan 10 steps
-2. Generate unique design (not template)
-3. Create all files
-4. Run QA validation
-5. Self-heal any issues
-
-### Deep Research
-```
-"Research the industrial symbiosis market in the EU"
+"Build me a premium landing page for my SaaS"
 ```
 
-### Code Review
+### Business Analysis
 ```
-"Review my project and generate documentation"
-```
-
-### Git Push
-```
-"Commit and push my changes to GitHub"
+"Analyze the competitive landscape for Notion"
 ```
 
----
+### Pitch Deck
+```
+"Create a pitch deck for Jarvis AI"
+```
 
-## 🎨 Unique Design System
+### Content
+```
+"Write a LinkedIn post about AI agents"
+```
 
-Jarvis never generates cookie-cutter websites. Each build gets:
-
-- **Random Layout**: Bento Grid, Asymmetric Split, Horizontal Scroll, etc.
-- **Random Palette**: Neon Cyberpunk, Ocean Depths, Forest Moss, etc.
-- **Banned Patterns**: "3 equal-width boxes", "centered hero with gradient"
+### Research
+```
+"Find papers on industrial symbiosis"
+```
 
 ---
 
 ## 🔐 Security
 
-### Terminal Agent (4-Layer Security)
-1. **Blocked Commands**: rm, del, sudo, chmod, etc.
-2. **Blocked Patterns**: ;, &&, |, >, etc.
-3. **Blocked Keywords**: delete, destroy, format, etc.
+### Terminal Sandboxing (4 Layers)
+1. **Blocked Commands**: rm, del, sudo, format
+2. **Blocked Patterns**: ;, &&, |, >
+3. **Blocked Keywords**: delete, destroy, password
 4. **Whitelist Only**: npm, pip, python, node, git
 
 ---
 
-## 📊 How It Works
+## 🎨 Design System
 
-```
-User Input → UI → Router
-              ↓
-    ┌─────────────────┐
-    │ autonomous.py   │ ← Plans 10 steps
-    │                 │
-    │ For each step:  │
-    │  ├─ context     │ ← code_indexer
-    │  ├─ creativity  │ ← design_creativity
-    │  ├─ generate    │ ← LM Studio
-    │  ├─ save        │ ← project_manager
-    │  └─ validate    │ ← qa_agent
-    └─────────────────┘
-              ↓
-         Done! Project saved to jarvis_workspace/
-```
+Jarvis never generates generic templates:
+- **Random Layouts**: Bento Grid, Asymmetric, Horizontal Scroll
+- **Random Palettes**: Neon Cyberpunk, Ocean Depths, Forest Moss
+- **Banned Patterns**: "3 equal boxes", "centered hero"
 
 ---
 
-## 🛠️ Configuration
+## 📊 Stats
 
-### `agents/config.py`
-```python
-LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
-WORKSPACE_DIR = "jarvis_workspace"
-MAX_CONTEXT_TOKENS = 32000
-```
-
-### Environment Variables
-```bash
-GITHUB_TOKEN=your_token  # For git_agent push
-```
+| Metric | Value |
+|--------|-------|
+| Total Agents | 36 |
+| API Endpoints | 25+ |
+| Lines of Code | 15,000+ |
+| API Cost | $0 |
 
 ---
 
 ## 📈 Roadmap
 
-- [x] 26 Agent System
+- [x] 36 Agent System
 - [x] Autonomous Execution
-- [x] Design Creativity System
+- [x] Design Creativity
 - [x] Git Integration
-- [x] UI Wiring
-- [ ] Web UI (React)
-- [ ] Cloud-Hosted Option
-- [ ] Plugin System
-- [ ] Multi-Model Support
-
----
-
-## 🤝 Contributing
-
-PRs welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+- [x] REST API
+- [x] Memory Layer
+- [x] Content Writer
+- [x] Business Suite
+- [ ] Web Dashboard
+- [ ] Agent VMs
+- [ ] Multi-tenant SaaS
 
 ---
 
@@ -197,11 +213,6 @@ MIT License - see [LICENSE](LICENSE)
 
 ---
 
-## 🙏 Acknowledgments
+**Built by [@ibraheemmryyian](https://github.com/ibraheemmryyian)**
 
-- Built by [@ibraheemmryyian](https://github.com/ibraheemmryyian)
-- Powered by local LLMs via [LM Studio](https://lmstudio.ai/)
-
----
-
-**"Not just an AI. Your AI."** 🤖
+**"The AI that builds itself."** 🤖
