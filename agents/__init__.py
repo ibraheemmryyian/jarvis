@@ -24,6 +24,9 @@ from .browser_tester import browser_tester, BrowserTester
 from .design_creativity import design_creativity, DesignCreativity
 from .git_agent import git_agent, GitAgent
 from .visual_qa import visual_qa, VisualQA
+from .academic_research import academic_research, AcademicResearch
+from .business_analyst import business_analyst, BusinessAnalyst
+from .pitch_deck import pitch_deck, PitchDeckGenerator
 
 __all__ = [
     "context",
@@ -70,5 +73,13 @@ __all__ = [
     "GitAgent",
     "visual_qa",
     "VisualQA",
+    # Business Suite
+    "academic_research",
+    "AcademicResearch",
+    "business_analyst",
+    "BusinessAnalyst",
+    "pitch_deck",
+    "PitchDeckGenerator",
 ]
+
 
