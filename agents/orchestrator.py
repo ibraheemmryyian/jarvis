@@ -30,7 +30,7 @@ from .code_indexer import code_indexer
 
 # Research agents
 from .research import researcher
-from .brute_research import brute_searcher
+from .brute_research import brute_researcher
 from .synthesis import deep_research_v2
 from .academic_research import academic_research
 
@@ -119,7 +119,7 @@ class Orchestrator:
             
             # Research
             "researcher": researcher,
-            "brute_research": brute_searcher,
+            "brute_research": brute_researcher,
             "academic_research": academic_research,
             
             # Business
