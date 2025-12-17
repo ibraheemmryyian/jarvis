@@ -57,6 +57,9 @@ from .recycler import recycler
 from .prompt_refiner import prompt_refiner
 from .ops import ops
 
+# Document generation
+from .document_engine import document_engine
+
 
 class Orchestrator:
     """
@@ -91,6 +94,10 @@ class Orchestrator:
         "ops": {
             "agents": ["ops", "git_agent", "terminal"],
             "keywords": ["deploy", "push", "commit", "run", "execute", "install", "server"]
+        },
+        "documents": {
+            "agents": ["document_engine"],
+            "keywords": ["document", "word", "excel", "pdf", "report", "proposal", "spreadsheet", "docx", "xlsx"]
         }
     }
     
@@ -136,6 +143,9 @@ class Orchestrator:
             "ops": ops,
             "recycler": recycler,
             "prompt_refiner": prompt_refiner,
+            
+            # Documents
+            "document_engine": document_engine,
         }
     
     def _log(self, message: str):
@@ -259,6 +269,14 @@ class Orchestrator:
                 "category": "productivity",
                 "primary_agent": "calendar_agent",
                 "pipeline": ["calendar_agent"]
+            }
+        
+        # Document generation
+        if any(kw in request_lower for kw in ["word doc", "excel", "spreadsheet", "pdf report", "proposal", ".docx", ".xlsx", ".pdf"]):
+            return {
+                "category": "documents",
+                "primary_agent": "document_engine",
+                "pipeline": ["document_engine"]
             }
         
         if "blog" in request_lower or "write" in request_lower and "email" not in request_lower:
@@ -411,6 +429,57 @@ class Orchestrator:
                 return terminal.run(request)
             else:
                 return ops.run(request)
+        
+        # === DOCUMENTS ===
+        if category == "documents":
+            update(f"📄 Document mode: {agent_name}")
+            
+            request_lower = request.lower()
+            
+            # Determine document type and generate
+            if "excel" in request_lower or "spreadsheet" in request_lower:
+                # Generate Excel
+                return document_engine.create_excel(
+                    filename="generated_spreadsheet",
+                    sheets=[{
+                        "name": "Sheet1",
+                        "headers": ["Column A", "Column B", "Column C"],
+                        "rows": [["Data will be populated by content"]],
+                        "column_widths": [20, 20, 20]
+                    }]
+                )
+            elif "proposal" in request_lower:
+                return document_engine.create_business_proposal(
+                    filename="proposal",
+                    company="Your Company",
+                    client="Client Name",
+                    proposal={
+                        "summary": "Generated proposal",
+                        "problem": request,
+                        "solution": "Solution description",
+                        "deliverables": ["Deliverable 1", "Deliverable 2"],
+                        "timeline": [["Phase 1", "2 weeks", "Initial setup"]],
+                        "pricing": "Contact for pricing",
+                        "next_steps": ["Schedule call", "Review proposal"]
+                    }
+                )
+            elif "pdf" in request_lower:
+                return document_engine.create_pdf(
+                    filename="generated_document",
+                    title="Generated Document",
+                    content=[
+                        {"type": "paragraph", "text": request}
+                    ]
+                )
+            else:
+                # Default to Word document
+                return document_engine.create_word_doc(
+                    filename="generated_document",
+                    title="Generated Document",
+                    sections=[
+                        {"heading": "Content", "content": request}
+                    ]
+                )
         
         # === CHAT (fallback) ===
         update("💬 Chat mode")

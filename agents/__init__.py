@@ -37,6 +37,7 @@ from .slack_agent import slack_agent, SlackAgent
 from .prompt_refiner import prompt_refiner, PromptRefiner
 from .devils_advocate import devils_advocate, DevilsAdvocate
 from .security_auditor import security_auditor, SecurityAuditor
+from .document_engine import document_engine, DocumentEngine
 
 __all__ = [
     "context",
@@ -111,7 +112,10 @@ __all__ = [
     "DevilsAdvocate",
     "security_auditor",
     "SecurityAuditor",
+    "document_engine",
+    "DocumentEngine",
 ]
+
 
 
 
