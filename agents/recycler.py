@@ -86,29 +86,192 @@ class ContextRecycler:
             "needs_recycling": self.needs_recycling()
         }
     
-    # === Domain Context Management ===
+    # === Domain Context Management (Anti-Bloat) ===
+    
+    # Maximum characters per domain file
+    MAX_DOMAIN_SIZE = 8000  # ~2000 tokens per domain
+    # How many entries to keep per domain
+    MAX_ENTRIES_PER_DOMAIN = 20
+    # Age out entries older than this (hours)
+    MAX_ENTRY_AGE_HOURS = 24
     
     def save_to_domain(self, domain: str, content: str, append: bool = True):
-        """Save content to a domain-specific context file."""
+        """
+        Save content to a domain-specific context file with anti-bloat.
+        
+        Features:
+        - Enforces max size per domain
+        - Removes oldest entries when full
+        - Adds timestamp for aging
+        """
         if domain not in self.DOMAINS:
             domain = "decisions"  # Default
         
         filepath = os.path.join(CONTEXT_DIR, self.DOMAINS[domain])
-        mode = "a" if append else "w"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        with open(filepath, mode, encoding="utf-8") as f:
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            f.write(f"\n## [{timestamp}]\n{content}\n")
+        # Format new entry with timestamp marker
+        new_entry = f"\n<!-- ENTRY: {timestamp} -->\n{content}\n<!-- /ENTRY -->\n"
+        
+        if append:
+            # Read existing content
+            existing = ""
+            if os.path.exists(filepath):
+                with open(filepath, "r", encoding="utf-8") as f:
+                    existing = f.read()
+            
+            # Add new entry
+            combined = existing + new_entry
+            
+            # Enforce size limit by removing oldest entries
+            combined = self._enforce_domain_limits(combined, domain)
+            
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(combined)
+        else:
+            # Overwrite mode
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(f"# {domain.upper()} Context\n\n{new_entry}")
     
-    def read_domain(self, domain: str) -> str:
-        """Read content from a domain context file."""
+    def _enforce_domain_limits(self, content: str, domain: str) -> str:
+        """
+        Enforce size and entry limits on domain content.
+        Removes oldest entries first.
+        """
+        import re
+        
+        # Extract all entries with timestamps
+        entry_pattern = r'<!-- ENTRY: ([\d-]+ [\d:]+) -->\n([\s\S]*?)<!-- /ENTRY -->'
+        matches = list(re.finditer(entry_pattern, content))
+        
+        if not matches:
+            # No structured entries, just truncate if too long
+            if len(content) > self.MAX_DOMAIN_SIZE:
+                return content[-self.MAX_DOMAIN_SIZE:]
+            return content
+        
+        # Parse entries with timestamps
+        entries = []
+        for match in matches:
+            timestamp_str = match.group(1)
+            entry_content = match.group(2).strip()
+            try:
+                timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                entries.append({
+                    "timestamp": timestamp,
+                    "content": entry_content,
+                    "full_match": match.group(0)
+                })
+            except:
+                entries.append({
+                    "timestamp": datetime.now(),
+                    "content": entry_content,
+                    "full_match": match.group(0)
+                })
+        
+        # Sort by timestamp (newest first)
+        entries.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        # Remove entries older than MAX_ENTRY_AGE_HOURS
+        now = datetime.now()
+        entries = [e for e in entries 
+                   if (now - e["timestamp"]).total_seconds() < self.MAX_ENTRY_AGE_HOURS * 3600]
+        
+        # Keep only MAX_ENTRIES_PER_DOMAIN
+        entries = entries[:self.MAX_ENTRIES_PER_DOMAIN]
+        
+        # Rebuild content
+        header = f"# {domain.upper()} Context\n\n"
+        body = "\n".join([e["full_match"] for e in reversed(entries)])  # Oldest first
+        
+        result = header + body
+        
+        # Final size check
+        if len(result) > self.MAX_DOMAIN_SIZE:
+            # Remove oldest entries until within limit
+            while len(result) > self.MAX_DOMAIN_SIZE and len(entries) > 1:
+                entries.pop()  # Remove oldest
+                body = "\n".join([e["full_match"] for e in reversed(entries)])
+                result = header + body
+        
+        return result
+    
+    def detect_domain(self, content: str) -> str:
+        """
+        Smart domain detection using patterns, not just keywords.
+        Returns the most appropriate domain for the content.
+        """
+        content_lower = content.lower()
+        
+        # Score each domain
+        scores = {
+            "frontend": 0,
+            "backend": 0,
+            "database": 0,
+            "research": 0,
+            "decisions": 0
+        }
+        
+        # Frontend patterns
+        frontend_patterns = [
+            "react", "vue", "angular", "css", "html", "component", 
+            "jsx", "tsx", "style", "ui", "ux", "button", "form",
+            "layout", "responsive", "animation", "tailwind", "sass"
+        ]
+        for p in frontend_patterns:
+            if p in content_lower:
+                scores["frontend"] += 2
+        
+        # Backend patterns
+        backend_patterns = [
+            "api", "endpoint", "server", "route", "controller",
+            "middleware", "authentication", "authorization", "jwt",
+            "rest", "graphql", "express", "fastapi", "django", "flask"
+        ]
+        for p in backend_patterns:
+            if p in content_lower:
+                scores["backend"] += 2
+        
+        # Database patterns
+        database_patterns = [
+            "database", "schema", "table", "query", "sql", "nosql",
+            "mongodb", "postgres", "mysql", "migration", "index",
+            "foreign key", "primary key", "relation", "orm", "prisma"
+        ]
+        for p in database_patterns:
+            if p in content_lower:
+                scores["database"] += 2
+        
+        # Research patterns
+        research_patterns = [
+            "research", "paper", "study", "analysis", "finding",
+            "source", "reference", "citation", "literature", "academic"
+        ]
+        for p in research_patterns:
+            if p in content_lower:
+                scores["research"] += 2
+        
+        # Get highest scoring domain
+        max_domain = max(scores, key=scores.get)
+        
+        # If no clear winner, default to decisions
+        if scores[max_domain] < 2:
+            return "decisions"
+        
+        return max_domain
+    
+    def read_domain(self, domain: str, max_chars: int = None) -> str:
+        """Read content from a domain context file with optional limit."""
         if domain not in self.DOMAINS:
             return ""
         
         filepath = os.path.join(CONTEXT_DIR, self.DOMAINS[domain])
         if os.path.exists(filepath):
             with open(filepath, "r", encoding="utf-8") as f:
-                return f.read()
+                content = f.read()
+                if max_chars and len(content) > max_chars:
+                    return content[-max_chars:]
+                return content
         return ""
     
     def clear_domain(self, domain: str):
@@ -118,15 +281,75 @@ class ContextRecycler:
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(f"# {domain.upper()} Context\n\n")
     
+    def get_relevant_context(self, task_type: str) -> str:
+        """
+        Get only the relevant context for a specific task type.
+        Prevents frontend context from polluting backend work.
+        """
+        if task_type in ["frontend", "ui", "design", "component"]:
+            domains = ["frontend", "decisions"]
+        elif task_type in ["backend", "api", "server"]:
+            domains = ["backend", "decisions"]
+        elif task_type in ["database", "schema", "data"]:
+            domains = ["database", "decisions"]
+        elif task_type in ["research", "analysis"]:
+            domains = ["research", "decisions"]
+        else:
+            # General task - get summary of all
+            domains = list(self.DOMAINS.keys())
+        
+        combined = []
+        for domain in domains:
+            content = self.read_domain(domain, max_chars=2000)
+            if content and len(content) > 100:
+                # Strip entry markers for cleaner output
+                import re
+                clean = re.sub(r'<!-- /?ENTRY.*?-->\n?', '', content)
+                combined.append(f"### {domain.upper()}\n{clean}")
+        
+        return "\n\n".join(combined)
+    
     def get_all_domain_context(self) -> str:
-        """Get combined context from all domain files (summarized)."""
+        """Get combined context from all domain files (with limits)."""
         combined = []
         for domain in self.DOMAINS:
-            content = self.read_domain(domain)
+            content = self.read_domain(domain, max_chars=1500)  # Reduced from 2000
             if content and len(content) > 100:
-                # Only include last 2000 chars per domain to save tokens
-                combined.append(f"### {domain.upper()}\n{content[-2000:]}")
+                import re
+                clean = re.sub(r'<!-- /?ENTRY.*?-->\n?', '', content)
+                combined.append(f"### {domain.upper()}\n{clean[-1500:]}")
         return "\n\n".join(combined)
+    
+    def get_context_stats(self) -> Dict:
+        """Get stats about context storage."""
+        stats = {}
+        for domain, filename in self.DOMAINS.items():
+            filepath = os.path.join(CONTEXT_DIR, filename)
+            if os.path.exists(filepath):
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    import re
+                    entries = len(re.findall(r'<!-- ENTRY:', content))
+                    stats[domain] = {
+                        "size_chars": len(content),
+                        "size_tokens": self.count_tokens(content),
+                        "entries": entries
+                    }
+            else:
+                stats[domain] = {"size_chars": 0, "size_tokens": 0, "entries": 0}
+        
+        return stats
+    
+    def cleanup_old_entries(self):
+        """Manually trigger cleanup of old entries across all domains."""
+        for domain in self.DOMAINS:
+            content = self.read_domain(domain)
+            if content:
+                cleaned = self._enforce_domain_limits(content, domain)
+                filepath = os.path.join(CONTEXT_DIR, self.DOMAINS[domain])
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(cleaned)
+        print("[Recycler] Cleaned up old entries across all domains")
     
     # === Task State Management ===
     
