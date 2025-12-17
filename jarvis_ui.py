@@ -619,34 +619,29 @@ class JarvisUI:
         self.root.configure(bg="#000000")
         
         self.is_running = False
-        self.is_busy = False # New Flag: Prevents interruptions
-        self.is_speaking = False # New Flag: Prevents hearing itself
-        self.stop_flag = False # New Flag: Forces halts
+        self.is_busy = False # Flag: Prevents interruptions
+        self.is_speaking = False # Flag: Prevents hearing itself
+        self.stop_flag = False # Flag: Forces halts
         self.current_turn_id = 0
         self.msg_queue = queue.Queue()
-        self.speech_queue = queue.Queue() # New: For streaming TTS
+        self.speech_queue = queue.Queue() # For streaming TTS
+        self.audio_queue = queue.Queue() # For Playing Audio
         self.current_chat_file = None
+        self.chat_history = [CHAT_PROMPT]  # Initialize chat history
         
         self.setup_ui()
         self.log_system("Initializing Sentient Suite...")
         
         self.load_chat_list()
-        if not self.current_chat_file: self.new_chat()
-        
-        self.audio_queue = queue.Queue() # New: For Playing Audio
-        
-        self.setup_ui()
-        self.log_system("Initializing Sentient Suite...")
-        
-        self.load_chat_list()
-        if not self.current_chat_file: self.new_chat()
+        if not self.current_chat_file: 
+            self.new_chat()
         
         # Bind Escape Key for Emergency Stop
         self.root.bind("<Escape>", lambda e: self.stop_action())
         
         threading.Thread(target=self.load_ai, daemon=True).start()
-        threading.Thread(target=self.speech_synthesis_loop, daemon=True).start() # Thread 1: Generate
-        threading.Thread(target=self.audio_playback_loop, daemon=True).start()   # Thread 2: Play
+        threading.Thread(target=self.speech_synthesis_loop, daemon=True).start()
+        threading.Thread(target=self.audio_playback_loop, daemon=True).start()
         self.root.after(100, self.process_queue)
 
     def setup_ui(self):
