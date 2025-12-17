@@ -107,7 +107,12 @@ __all__ = [
     "SlackAgent",
     "prompt_refiner",
     "PromptRefiner",
+    "devils_advocate",
+    "DevilsAdvocate",
+    "security_auditor",
+    "SecurityAuditor",
 ]
+
 
 
 
