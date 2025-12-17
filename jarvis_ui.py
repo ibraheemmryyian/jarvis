@@ -91,14 +91,24 @@ TOOL_PROMPT = {
         "12. autonomous_task(objective): START A BIG AUTONOMOUS TASK. For building websites, apps, research projects. Runs in background with 10-step planning, QA, and self-healing. USE THIS for complex requests like 'build me a landing page'.\n"
         "13. cofounder_task(task_type, objective): General co-founder tasks. task_type='research', 'writing', 'analysis', 'coding', or 'general'.\n"
         "14. git_push(project_path, message): Commit and push project to GitHub.\n"
+        "--- BUSINESS SUITE ---\n"
+        "15. research_papers(query, num_papers): Search academic papers on arXiv/Semantic Scholar. Returns citations, abstracts, key findings.\n"
+        "16. literature_review(topic): Generate a full literature review with citations and synthesis.\n"
+        "17. business_analysis(company, description, industry): Full business analysis: SWOT, BMC, market sizing, financials, Porter's 5 Forces.\n"
+        "18. competitor_analysis(company, industry): Analyze competitors, positioning, market share.\n"
+        "19. market_sizing(product, target_market): Calculate TAM/SAM/SOM with validation.\n"
+        "20. generate_pitch_deck(company, description, industry): Create investor-ready pitch deck (reveal.js HTML).\n"
+        "21. score_pitch_deck(slides_json): Score a pitch deck on content, visuals, flow, specificity.\n"
         "OUTPUT FORMAT: {\"tool\": \"tool_name\", \"args\": {...}}\n"
         "STRATEGY:\n"
         "1. For COMPLEX tasks (build website, create app, research project): use autonomous_task(objective).\n"
-        "2. For simple tasks: use appropriate individual tools.\n"
-        "3. NEVER give up on errors. Analyze, fix, retry.\n"
-        "4. When done: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:...\\nRESULT:...\"}}"
+        "2. For BUSINESS tasks (analysis, pitch deck, market research): use business suite tools.\n"
+        "3. For simple tasks: use appropriate individual tools.\n"
+        "4. NEVER give up on errors. Analyze, fix, retry.\n"
+        "5. When done: {\"tool\": \"done\", \"args\": {\"report\": \"SUMMARY:...\\nRESULT:...\"}}"
     )
 }
+
 
 class JarvisTools:
     @staticmethod
@@ -428,6 +438,178 @@ class JarvisTools:
                 return f"Push failed: {push_result.get('stderr', 'Unknown error')}"
         except Exception as e:
             return f"Git error: {e}"
+    
+    # === BUSINESS SUITE TOOLS ===
+    
+    @staticmethod
+    def research_papers(query, num_papers=10):
+        """Search academic papers across arXiv, Semantic Scholar."""
+        try:
+            from agents import academic_research
+            
+            results = academic_research.search(query, max_results=num_papers)
+            
+            output = f"Found {results['total_papers']} papers:\n\n"
+            for i, paper in enumerate(results['papers'][:num_papers], 1):
+                citation = academic_research.generate_citation(paper, "APA")
+                output += f"{i}. {paper['title']}\n"
+                output += f"   {citation}\n"
+                if paper.get('abstract'):
+                    output += f"   Abstract: {paper['abstract'][:200]}...\n"
+                output += "\n"
+            
+            return output
+        except Exception as e:
+            return f"Research error: {e}"
+    
+    @staticmethod
+    def literature_review(topic):
+        """Generate a full literature review with citations."""
+        try:
+            from agents import academic_research
+            
+            result = academic_research.generate_literature_review(topic)
+            
+            if result.get("error"):
+                return f"Error: {result['error']}"
+            
+            output = result.get("literature_review", "")
+            output += "\n\n## References\n\n"
+            for ref in result.get("references", []):
+                output += f"{ref}\n"
+            
+            # Save to file
+            if result.get("saved_to"):
+                output += f"\n\nFull review saved to: {result['saved_to']}"
+            
+            return output
+        except Exception as e:
+            return f"Literature review error: {e}"
+    
+    @staticmethod
+    def business_analysis(company, description, industry):
+        """Run full business analysis: SWOT, BMC, market sizing, financials."""
+        try:
+            from agents import business_analyst
+            import json
+            
+            result = business_analyst.full_analysis(company, description, industry)
+            
+            output = f"# Business Analysis: {company}\n\n"
+            output += f"## Executive Summary\n{result.get('executive_summary', 'N/A')}\n\n"
+            
+            if result.get("report_path"):
+                output += f"\nFull report saved to: {result['report_path']}"
+            
+            return output
+        except Exception as e:
+            return f"Business analysis error: {e}"
+    
+    @staticmethod
+    def competitor_analysis(company, industry):
+        """Analyze competitors and market positioning."""
+        try:
+            from agents import business_analyst
+            import json
+            
+            result = business_analyst.competitor_analysis(company, industry)
+            
+            if result.get("error"):
+                return f"Error: {result['error']}"
+            
+            output = f"# Competitor Analysis: {company}\n\n"
+            
+            for comp in result.get("top_competitors", []):
+                output += f"## {comp.get('name', 'Unknown')}\n"
+                output += f"- Strengths: {', '.join(comp.get('strengths', []))}\n"
+                output += f"- Weaknesses: {', '.join(comp.get('weaknesses', []))}\n"
+                output += f"- Market Share: {comp.get('estimated_market_share', 'Unknown')}\n\n"
+            
+            positioning = result.get("your_positioning", {})
+            output += f"## Your Positioning\n"
+            output += f"- Unique Advantages: {', '.join(positioning.get('unique_advantages', []))}\n"
+            output += f"- Strategy: {positioning.get('recommended_strategy', 'N/A')}\n"
+            
+            return output
+        except Exception as e:
+            return f"Competitor analysis error: {e}"
+    
+    @staticmethod
+    def market_sizing(product, target_market):
+        """Calculate TAM/SAM/SOM with validation."""
+        try:
+            from agents import business_analyst
+            
+            result = business_analyst.market_sizing(product, target_market)
+            
+            if result.get("error"):
+                return f"Error: {result['error']}"
+            
+            output = f"# Market Sizing: {product}\n\n"
+            
+            tam = result.get("tam", {})
+            sam = result.get("sam", {})
+            som = result.get("som", {})
+            
+            output += f"## TAM: {tam.get('value_usd', 'TBD')}\n"
+            output += f"{tam.get('description', '')}\n\n"
+            
+            output += f"## SAM: {sam.get('value_usd', 'TBD')}\n"
+            output += f"{sam.get('description', '')}\n\n"
+            
+            output += f"## SOM: {som.get('value_usd', 'TBD')}\n"
+            output += f"{som.get('description', '')}\n\n"
+            
+            validation = result.get("bottom_up_validation", {})
+            output += f"## Validation\n"
+            output += f"- Potential Customers: {validation.get('potential_customers', 'TBD')}\n"
+            output += f"- Avg Deal Size: {validation.get('average_deal_size', 'TBD')}\n"
+            
+            return output
+        except Exception as e:
+            return f"Market sizing error: {e}"
+    
+    @staticmethod
+    def generate_pitch_deck(company, description, industry="tech"):
+        """Create investor-ready pitch deck with reveal.js HTML."""
+        try:
+            from agents import pitch_deck, pitch_deck_scorer
+            
+            result = pitch_deck.generate(company, description, industry)
+            
+            # Score the deck
+            score_result = pitch_deck_scorer.score(result["slides"])
+            summary = pitch_deck_scorer.get_summary(score_result)
+            
+            output = f"# Pitch Deck Generated: {company}\n\n"
+            output += f"Slides: {result['slide_count']}\n"
+            output += f"Theme: {result['theme']}\n"
+            output += f"Location: {result['deck_path']}\n"
+            output += f"HTML File: {result['html_file']}\n\n"
+            output += f"## Quality Score\n{summary}"
+            
+            return output
+        except Exception as e:
+            return f"Pitch deck error: {e}"
+    
+    @staticmethod
+    def score_pitch_deck(slides_json):
+        """Score an existing pitch deck on quality dimensions."""
+        try:
+            from agents import pitch_deck_scorer
+            import json
+            
+            if isinstance(slides_json, str):
+                slides = json.loads(slides_json)
+            else:
+                slides = slides_json
+            
+            result = pitch_deck_scorer.score(slides)
+            summary = pitch_deck_scorer.get_summary(result)
+            
+            return summary
+        except Exception as e:
+            return f"Scoring error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
