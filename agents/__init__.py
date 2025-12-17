@@ -35,6 +35,8 @@ from .email_agent import email_agent, EmailAgent
 from .calendar_agent import calendar_agent, CalendarAgent
 from .slack_agent import slack_agent, SlackAgent
 from .prompt_refiner import prompt_refiner, PromptRefiner
+from .devils_advocate import devils_advocate, DevilsAdvocate
+from .security_auditor import security_auditor, SecurityAuditor
 
 __all__ = [
     "context",
@@ -103,7 +105,10 @@ __all__ = [
     "CalendarAgent",
     "slack_agent",
     "SlackAgent",
+    "prompt_refiner",
+    "PromptRefiner",
 ]
+
 
 
 
