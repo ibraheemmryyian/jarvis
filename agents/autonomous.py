@@ -21,6 +21,7 @@ from .terminal import terminal
 from .code_indexer import code_indexer
 from .design_creativity import design_creativity
 from .visual_qa import visual_qa
+from .prompt_refiner import prompt_refiner
 
 
 class AutonomousExecutor:
@@ -663,9 +664,21 @@ Format: Just the numbered list, nothing else."""
         self.log = []
         
         self._log(f"=== AUTONOMOUS MODE STARTED ===")
-        self._log(f"Objective: {objective}")
+        self._log(f"Original objective: {objective}")
         
         try:
+            # Phase 0: Prompt Refinement (auto-expand vague prompts)
+            self._log("Phase 0: Refining prompt...")
+            try:
+                refined = prompt_refiner.quick_refine(objective)
+                if refined and refined != objective:
+                    self._log(f"Refined to: {refined[:200]}...")
+                    objective = refined
+                else:
+                    self._log("Using original prompt (already detailed)")
+            except Exception as e:
+                self._log(f"Prompt refinement skipped: {e}")
+            
             # Phase 1: Research (if needed)
             self._log("Phase 1: Research")
             routing = router.classify(objective)
