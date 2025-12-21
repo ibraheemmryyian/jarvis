@@ -673,11 +673,11 @@ Write in formal academic style.""",
 The methodology should:
 - Describe the research approach (qualitative/quantitative/mixed)
 - Explain data collection methods
-- Describe analysis techniques
-- Address limitations
+- Describe analysis techniques (CRITICAL: Must include Sensitivity Analysis & Ablation Studies)
+- Address limitations and Robustness checks
 - Be 300-400 words
 
-Write in formal academic style.""",
+Write in formal graduate-level academic style.""",
 
             "Results": f"""Write the Results section for a {paper_type} paper on:
 "{topic}"
@@ -738,7 +738,7 @@ Use citations like [1], [2] where appropriate."""
                 LM_STUDIO_URL,
                 json={
                     "messages": [
-                        {"role": "system", "content": "You are an expert academic writer. Write in formal, scholarly style with proper academic tone. Be precise and well-structured."},
+                        {"role": "system", "content": "You are a Graduate-Level Research Scientist. You hold yourself to high epistemological standards. You prioritize Ablation Studies, Sensitivity Analysis, and Robustness checks in all methodologies. Write in formal, scholarly style."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.3,
