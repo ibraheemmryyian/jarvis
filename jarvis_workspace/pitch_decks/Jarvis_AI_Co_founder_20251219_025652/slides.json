@@ -1,0 +1,159 @@
+[
+  {
+    "id": "cover",
+    "title": "Jarvis AI Co-founder",
+    "subtitle": "AI assistant for founders",
+    "content": []
+  },
+  {
+    "id": "problem",
+    "title": "The Problem",
+    "subtitle": "Founders struggle with execution",
+    "content": [
+      "Too many tasks, too little time",
+      "Missing strategic support",
+      "No AI co-pilot yet"
+    ],
+    "stat": "80% of startups fail due to execution issues"
+  },
+  {
+    "id": "solution",
+    "title": "Our Solution",
+    "subtitle": "AI co-founder that works 24/7",
+    "content": [
+      "Automates routine tasks",
+      "Provides strategic insights",
+      "Manages workflows"
+    ],
+    "key_benefit": "Founder productivity multiplier"
+  },
+  {
+    "id": "market",
+    "title": "Market Opportunity",
+    "subtitle": null,
+    "tam": "$12B",
+    "sam": "$3B",
+    "som": "$800M",
+    "content": [
+      "AI assistant market growing fast"
+    ]
+  },
+  {
+    "id": "product",
+    "title": "Product",
+    "subtitle": "How it works",
+    "content": [
+      "Task automation engine",
+      "Strategic planning AI",
+      "Workflow orchestration"
+    ],
+    "note": "Screenshot/demo would go here"
+  },
+  {
+    "id": "business_model",
+    "title": "Business Model",
+    "subtitle": null,
+    "pricing": "Subscription model",
+    "content": [
+      "Monthly founder plans",
+      "Enterprise licensing"
+    ],
+    "unit_economics": "LTV/CAC ratio 5x"
+  },
+  {
+    "id": "traction",
+    "title": "Traction",
+    "subtitle": null,
+    "metrics": [
+      {
+        "label": "Active users",
+        "value": "12",
+        "growth": "+300%"
+      }
+    ],
+    "milestones": [
+      "MVP built",
+      "Early beta signups"
+    ]
+  },
+  {
+    "id": "competition",
+    "title": "Competitive Landscape",
+    "subtitle": null,
+    "differentiator": "First true AI co-founder",
+    "competitors": [
+      "Notion AI",
+      "ChatGPT",
+      "Monday.com"
+    ],
+    "our_advantage": "Founder-specific execution focus"
+  },
+  {
+    "id": "team",
+    "title": "Team",
+    "subtitle": null,
+    "members": [
+      {
+        "name": "Alex Chen",
+        "role": "CEO",
+        "credential": "Former startup CTO"
+      },
+      {
+        "name": "Maya Patel",
+        "role": "CTO",
+        "credential": "AI researcher at Stanford"
+      }
+    ]
+  },
+  {
+    "id": "financials",
+    "title": "Financials",
+    "subtitle": "Projections",
+    "projections": [
+      {
+        "year": "Year 1",
+        "revenue": "$0"
+      },
+      {
+        "year": "Year 3",
+        "revenue": "$2.5M"
+      },
+      {
+        "year": "Year 5",
+        "revenue": "$15M"
+      }
+    ],
+    "path_to_profitability": "Break-even by year 4"
+  },
+  {
+    "id": "ask",
+    "title": "The Ask",
+    "subtitle": null,
+    "amount": "$500K",
+    "use_of_funds": [
+      {
+        "category": "Product",
+        "percentage": "50%"
+      },
+      {
+        "category": "Growth",
+        "percentage": "30%"
+      },
+      {
+        "category": "Team",
+        "percentage": "20%"
+      }
+    ],
+    "milestones_with_funding": [
+      "Launch public beta",
+      "Secure 100+ users"
+    ]
+  },
+  {
+    "id": "contact",
+    "title": "Let's Build Together",
+    "subtitle": null,
+    "cta": "Join the future of AI co-founders",
+    "contact": "founders@jarvisai.co"
+  }
+]

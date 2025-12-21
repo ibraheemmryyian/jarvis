@@ -1,0 +1,111 @@
+{
+  "project": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024",
+  "timestamp": "2025-12-20T03:10:56.108146",
+  "file_results": [
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/set-the.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 36, closes: 28)"
+        }
+      ],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/set-the.css",
+      "type": "css",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/create-responsive.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 37, closes: 31)"
+        }
+      ],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/create-responsive.css",
+      "type": "css",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/create-responsive.js",
+      "type": "javascript",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/design-hero.html",
+      "type": "html",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/implement-features.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 25, closes: 18)"
+        }
+      ],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/build-testimonials.html",
+      "type": "html",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/create-modern.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 37, closes: 30)"
+        }
+      ],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/add-smooth-scroll.html",
+      "type": "html",
+      "status": "warning",
+      "issues": [
+        {
+          "severity": "warning",
+          "message": "Possible unclosed tags (opens: 52, closes: 45)"
+        }
+      ],
+      "suggestions": []
+    },
+    {
+      "file": "C:\\Users\\Imrry\\Desktop\\jarvis\\jarvis_workspace\\projects\\landing-contemporary-2024\\src/implement-responsive-design.css",
+      "type": "css",
+      "status": "pass",
+      "issues": [],
+      "suggestions": []
+    }
+  ],
+  "overall_status": "warning",
+  "total_errors": 0,
+  "total_warnings": 5
+}

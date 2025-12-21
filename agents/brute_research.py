@@ -28,6 +28,14 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
+# Google Custom Search (primary source)
+try:
+    from .google_search import google_search, GoogleSearchAgent
+    GOOGLE_AVAILABLE = True if google_search.cx else False
+except ImportError:
+    GOOGLE_AVAILABLE = False
+    google_search = None
+
 
 @dataclass
 class ResearchResult:
@@ -160,6 +168,39 @@ Output ONLY the JSON array, nothing else."""
             with DDGS() as ddg:
                 results = list(ddg.news(query, max_results=max_results))
                 return results
+        except Exception as e:
+            return [{"error": str(e)}]
+    
+    # === GOOGLE SEARCH (PRIMARY) ===
+    
+    def _search_google(self, query: str, max_results: int = 10) -> List[Dict]:
+        """Google Custom Search - best quality results."""
+        if not GOOGLE_AVAILABLE or not google_search:
+            return []
+        try:
+            results = google_search.search(query, num_results=max_results)
+            # Normalize to DDG-like format
+            return [{"title": r.get("title", ""), "body": r.get("snippet", ""), "href": r.get("link", "")} for r in results]
+        except Exception as e:
+            return [{"error": str(e)}]
+    
+    def _search_google_news(self, query: str, max_results: int = 10) -> List[Dict]:
+        """Google News search (past week)."""
+        if not GOOGLE_AVAILABLE or not google_search:
+            return []
+        try:
+            results = google_search.search_news(query, num_results=max_results)
+            return [{"title": r.get("title", ""), "body": r.get("snippet", ""), "href": r.get("link", "")} for r in results]
+        except Exception as e:
+            return [{"error": str(e)}]
+    
+    def _search_google_academic(self, query: str, max_results: int = 10) -> List[Dict]:
+        """Google Scholar + academic sites."""
+        if not GOOGLE_AVAILABLE or not google_search:
+            return []
+        try:
+            results = google_search.search_academic(query, num_results=max_results)
+            return [{"title": r.get("title", ""), "body": r.get("snippet", ""), "href": r.get("link", "")} for r in results]
         except Exception as e:
             return [{"error": str(e)}]
     

@@ -38,14 +38,21 @@ class BaseAgent(ABC):
         messages.append({"role": "user", "content": user_input})
         return messages
     
-    def call_llm(self, user_input: str, include_context: bool = True, json_mode: bool = False) -> str:
+    def _call_llm(self, prompt: str, max_tokens: int = None) -> str:
+        """Alias for call_llm for child agent compatibility."""
+        return self.call_llm(prompt, max_tokens=max_tokens)
+    
+    def call_llm(self, user_input: str, include_context: bool = True, json_mode: bool = False, max_tokens: int = None) -> str:
         """Make a call to the local LLM server with smart timeout handling."""
         messages = self._build_messages(user_input, include_context)
+        
+        # Use provided max_tokens or fall back to default
+        tokens_limit = max_tokens or MAX_OUTPUT_TOKENS
         
         payload = {
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": MAX_OUTPUT_TOKENS,
+            "max_tokens": tokens_limit,
             "stream": True  # Enable streaming for progress feedback
         }
         
@@ -63,6 +70,12 @@ class BaseAgent(ABC):
             # Stream the response and collect it
             full_content = ""
             token_count = 0
+            import time
+            from datetime import datetime
+            start_time = time.time()
+            last_print = 0
+            
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [LLM] Starting generation...", flush=True)
             
             for line in response.iter_lines():
                 if line:
@@ -78,14 +91,17 @@ class BaseAgent(ABC):
                             if content:
                                 full_content += content
                                 token_count += 1
-                                # Progress indicator every 500 tokens
-                                if token_count % 500 == 0:
-                                    print(f"[LLM] Generating... {token_count} tokens")
+                                # Progress indicator every 100 tokens
+                                if token_count - last_print >= 100:
+                                    elapsed = int(time.time() - start_time)
+                                    tps = token_count / max(elapsed, 1)
+                                    print(f"[{datetime.now().strftime('%H:%M:%S')}] [LLM] {token_count} tokens ({tps:.1f} t/s) | Last: {content[:30]}...", flush=True)
+                                    last_print = token_count
                         except json.JSONDecodeError:
                             continue
             
-            if token_count > 0:
-                print(f"[LLM] Complete: {token_count} tokens generated")
+            elapsed = int(time.time() - start_time)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [LLM] DONE: {token_count} tokens in {elapsed}s ({token_count/max(elapsed,1):.1f} t/s)", flush=True)
             
             return full_content if full_content else "[No content generated]"
             

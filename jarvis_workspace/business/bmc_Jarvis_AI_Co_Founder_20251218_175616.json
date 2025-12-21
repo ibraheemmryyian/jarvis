@@ -1,0 +1,186 @@
+{
+  "customer_segments": {
+    "primary": [
+      "Early-stage startup founders",
+      "Serial entrepreneurs",
+      "Small business owners"
+    ],
+    "secondary": [
+      "Product managers",
+      "Business development executives",
+      "Corporate innovation teams"
+    ],
+    "characteristics": [
+      "Tech-savvy, time-constrained, value efficiency, willing to invest in automation, operate in fast-paced environments, seek scalable solutions"
+    ]
+  },
+  "value_propositions": {
+    "core_value": "An AI-powered co-founder that provides strategic decision-making, operational support, and business development assistance to startups and growing businesses",
+    "features": [
+      "Strategic planning and execution",
+      "Market research and competitive analysis",
+      "Product roadmap guidance",
+      "Fundraising support and pitch preparation",
+      "Operational task automation",
+      "24/7 availability"
+    ],
+    "pain_relievers": [
+      "Time scarcity for founders",
+      "Lack of strategic expertise",
+      "Decision paralysis",
+      "Operational inefficiencies",
+      "Limited access to business mentors"
+    ],
+    "gain_creators": [
+      "Faster decision-making cycles",
+      "Increased startup success rates",
+      "Reduced operational overhead",
+      "Enhanced scalability",
+      "Access to expert-level business guidance"
+    ]
+  },
+  "channels": {
+    "awareness": [
+      "Tech startup conferences",
+      "Angel investor networks",
+      "Startup accelerators",
+      "LinkedIn marketing",
+      "Content marketing"
+    ],
+    "evaluation": [
+      "Free trial period",
+      "Demo videos and case studies",
+      "Testimonials from early users",
+      "Webinars and workshops"
+    ],
+    "purchase": [
+      "Direct online sales",
+      "Partnership referrals",
+      "Enterprise licensing",
+      "Subscription portal"
+    ],
+    "delivery": [
+      "AI platform access via web/app",
+      "API integrations with existing tools",
+      "Regular AI updates and improvements"
+    ],
+    "after_sales": [
+      "Onboarding support",
+      "Weekly check-ins",
+      "Customer success team",
+      "Continuous training and updates"
+    ]
+  },
+  "customer_relationships": {
+    "type": "personal",
+    "acquisition": [
+      "Content marketing to attract founders",
+      "Partnerships with accelerators",
+      "Referral programs from early adopters"
+    ],
+    "retention": [
+      "Regular value demonstrations",
+      "Personalized onboarding",
+      "Success metrics tracking",
+      "Community building"
+    ],
+    "growth": [
+      "Upselling premium features",
+      "Cross-selling to team members",
+      "Referral incentives",
+      "Enterprise licensing opportunities"
+    ]
+  },
+  "revenue_streams": {
+    "primary": [
+      "Subscription fees",
+      "Enterprise licensing",
+      "Premium feature add-ons",
+      "Consulting services"
+    ],
+    "pricing_model": "subscription",
+    "pricing_strategy": "competitive"
+  },
+  "key_resources": {
+    "physical": [
+      "AI servers and cloud infrastructure",
+      "Software development tools",
+      "Office space for core team"
+    ],
+    "intellectual": [
+      "AI algorithms and machine learning models",
+      "Business frameworks and methodologies",
+      "Data analytics capabilities",
+      "Patents for proprietary AI techniques"
+    ],
+    "human": [
+      "AI engineers and data scientists",
+      "Business strategists and consultants",
+      "Product managers",
+      "Customer success specialists"
+    ],
+    "financial": [
+      "Seed funding for development",
+      "Revenue from early customers",
+      "Investment capital for scaling"
+    ]
+  },
+  "key_activities": {
+    "production": [
+      "AI model training and optimization",
+      "Platform development and maintenance",
+      "Data collection and analysis"
+    ],
+    "problem_solving": [
+      "Strategic business consulting",
+      "Operational task automation",
+      "Decision support systems"
+    ],
+    "platform": [
+      "User interface design",
+      "API development",
+      "Integration with existing tools"
+    ]
+  },
+  "key_partnerships": {
+    "strategic_alliances": [
+      "Startup accelerators and incubators",
+      "Investment firms",
+      "Business consulting firms",
+      "Industry associations"
+    ],
+    "suppliers": [
+      "Cloud computing providers",
+      "Data analytics vendors",
+      "Marketing automation platforms"
+    ],
+    "joint_ventures": [
+      "Co-marketing partnerships with business tools",
+      "Strategic alliances with venture capital firms"
+    ]
+  },
+  "cost_structure": {
+    "fixed_costs": [
+      "Salaries for core team",
+      "Cloud infrastructure costs",
+      "Software licensing fees",
+      "Office rent and utilities"
+    ],
+    "variable_costs": [
+      "Customer acquisition costs",
+      "AI training and maintenance",
+      "Support staff wages",
+      "Marketing expenses"
+    ],
+    "economies_of_scale": [
+      "Lower per-user costs as user base grows",
+      "Shared AI model improvements benefit all users",
+      "Reduced marginal cost of serving new customers"
+    ],
+    "cost_drivers": [
+      "AI development and training costs",
+      "Customer acquisition expenses",
+      "Support and maintenance overhead"
+    ]
+  }
+}

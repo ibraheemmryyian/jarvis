@@ -1,0 +1,60 @@
+{
+  "tam": {
+    "value_usd": "$120B",
+    "description": "Global AI services market combined with startup funding and business automation tools. Based on $80B AI services market (McKinsey) + $40B startup ecosystem services (PitchBook) + $50B business process automation market (Gartner) - $70B overlap, leaving $120B total addressable market",
+    "growth_rate": "25%",
+    "data_sources": [
+      "McKinsey AI Market Report",
+      "PitchBook Startup Funding Data",
+      "Gartner Business Process Automation Report"
+    ]
+  },
+  "sam": {
+    "value_usd": "$36B",
+    "description": "Segment of TAM consisting of startups and businesses actively seeking AI-powered solutions, specifically those with $1M+ annual revenue or Series A+ funding, and those in tech/innovation sectors",
+    "percentage_of_tam": "30%",
+    "key_constraints": [
+      "High competition from existing AI tools",
+      "Need for enterprise-grade security",
+      "Limited awareness of AI co-founder concept",
+      "Geographic concentration in developed markets"
+    ]
+  },
+  "som": {
+    "value_usd": "$2.4B",
+    "description": "Realistic market share assuming 6.7% capture over 5 years, considering competitive landscape, customer acquisition costs, and product differentiation in the AI co-founder space",
+    "percentage_of_sam": "6.7%",
+    "assumptions": [
+      "Targeting early-stage to growth-stage startups",
+      "Pricing at $10K-25K annually per business",
+      "Competitive advantage through specialized startup expertise",
+      "Global expansion with focus on US/EU markets"
+    ]
+  },
+  "market_dynamics": {
+    "key_trends": [
+      "Rapid AI adoption in business operations",
+      "Startup funding reaching record highs",
+      "Increased demand for automation and productivity tools",
+      "Growing preference for AI-powered decision making"
+    ],
+    "disruption_risks": [
+      "Large tech companies entering AI co-founder space",
+      "Open-source AI alternatives gaining traction",
+      "Traditional consulting firms offering AI services",
+      "Rapidly evolving AI capabilities reducing differentiation"
+    ],
+    "regulatory_factors": [
+      "Data privacy regulations (GDPR, CCPA)",
+      "AI governance requirements in financial services",
+      "Intellectual property considerations for AI-generated content",
+      "Cross-border data transfer restrictions"
+    ],
+    "timing": "Perfect timing due to $100B+ startup ecosystem demand, AI maturity reaching practical application level, and increasing business need for cost-effective innovation solutions"
+  },
+  "bottom_up_validation": {
+    "potential_customers": "80,000",
+    "average_deal_size": "$30K",
+    "calculated_som": "$2.4B"
+  }
+}

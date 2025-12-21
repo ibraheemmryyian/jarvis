@@ -1,0 +1,95 @@
+{
+  "assumptions": {
+    "starting_mrr": "$25,000",
+    "growth_rate_year1": "15%",
+    "growth_rate_year2_3": "12%",
+    "growth_rate_year4_5": "10%",
+    "churn_rate": "5%",
+    "gross_margin": "85%",
+    "cac_payback_months": "6",
+    "ltv_cac_ratio": "3.5"
+  },
+  "yearly_projections": [
+    {
+      "year": 1,
+      "arr": "$300,000",
+      "mrr_end": "$300,000",
+      "customers": 120,
+      "revenue": "$300,000",
+      "gross_profit": "$255,000",
+      "operating_expenses": "$180,000",
+      "ebitda": "$75,000",
+      "burn_rate": "$15,000/month",
+      "runway_months": 12
+    },
+    {
+      "year": 2,
+      "arr": "$336,000",
+      "mrr_end": "$336,000",
+      "customers": 140,
+      "revenue": "$336,000",
+      "gross_profit": "$285,600",
+      "operating_expenses": "$220,000",
+      "ebitda": "$65,600",
+      "burn_rate": "$18,000/month",
+      "runway_months": 10
+    },
+    {
+      "year": 3,
+      "arr": "$376,320",
+      "mrr_end": "$376,320",
+      "customers": 165,
+      "revenue": "$376,320",
+      "gross_profit": "$319,872",
+      "operating_expenses": "$260,000",
+      "ebitda": "$59,872",
+      "burn_rate": "$20,000/month",
+      "runway_months": 9
+    },
+    {
+      "year": 4,
+      "arr": "$413,952",
+      "mrr_end": "$413,952",
+      "customers": 195,
+      "revenue": "$413,952",
+      "gross_profit": "$351,859",
+      "operating_expenses": "$300,000",
+      "ebitda": "$51,859",
+      "burn_rate": "$22,000/month",
+      "runway_months": 8
+    },
+    {
+      "year": 5,
+      "arr": "$455,347",
+      "mrr_end": "$455,347",
+      "customers": 230,
+      "revenue": "$455,347",
+      "gross_profit": "$387,045",
+      "operating_expenses": "$340,000",
+      "ebitda": "$47,045",
+      "burn_rate": "$24,000/month",
+      "runway_months": 7
+    }
+  ],
+  "key_metrics": {
+    "break_even_month": 18,
+    "arr_at_year_5": "$455,347",
+    "cumulative_revenue": "$1,921,620",
+    "total_funding_needed": "$180,000"
+  },
+  "sensitivity_analysis": {
+    "optimistic_scenario": {
+      "arr_year_5": "$625,000",
+      "assumptions": "18% annual growth rate, 4% churn rate, 90% gross margin"
+    },
+    "pessimistic_scenario": {
+      "arr_year_5": "$320,000",
+      "assumptions": "10% annual growth rate, 8% churn rate, 80% gross margin"
+    }
+  },
+  "benchmarks": {
+    "industry_median_growth": "20%",
+    "top_quartile_growth": "35%",
+    "your_positioning": "Below median"
+  }
+}

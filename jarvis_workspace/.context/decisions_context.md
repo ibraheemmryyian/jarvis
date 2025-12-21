@@ -1,52 +1,58 @@
 # DECISIONS Context
 
+<!-- ENTRY: 2025-12-20 21:41:02 -->
+### `Search`: query, filters, results (cached)
+[LLM Exception: 'charmap' codec can't encode character '\u2705' in position 46: character maps to <undefined>]
+<!-- /ENTRY -->
+<!-- ENTRY: 2025-12-21 01:35:29 -->
+### **Data Models**:
+[LLM Exception: 'charmap' codec can't encode character '\u2705' in position 48: character maps to <undefined>]
+<!-- /ENTRY -->
+<!-- ENTRY: 2025-12-21 01:37:25 -->
+### `User`: id, email, name, role (C-suite / SME), createdAt
+[LLM Exception: 'charmap' codec can't encode character '\u2705' in position 48: character maps to <undefined>]
+<!-- /ENTRY -->
+<!-- ENTRY: 2025-12-21 09:57:01 -->
+### Returns: List of all contacts with priority scores
+[COMMAND]: python3 -c "
+import pandas as pd
+import os
 
-## [00:08:38]
-### Create a responsive React component structure with dark theme and glassmorphism UI elements using Tailwind CSS or styled-components
-[LLM Exception: HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=1800)]
+# Read the Excel file
+file_path = 'jarvis_workspace/mgt1 first initial calls.xlsx'
+df = pd.read_excel(file_path)
 
-## [02:37:36]
-### Create wireframes and mockups for the dark cyberpunk themed landing page with glassmorphism elements
-[LLM Exception: HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=1800)]
+# Display basic info about the dataframe
+print('Columns:', df.columns.tolist())
+print('Shape:', df.shape)
+print(df.head())
+"
+[OUTPUT]: Columns: ['Company Name', 'Contact Person', 'Designation', 'Email', 'Phone', 'City', 'Country', 'Website', 'Sustainability Initiatives', 'Notes']
+Shape: (20, 9)
+   Company Name Contact Person Designation           Email      Phone      City Country Website Sustainability Initiatives Notes
+0    Al Ain Foodstuff     Mr. Ahmed Al Zabi      Director   ahmed@alain.com  +971 50  Al Ain    UAE  www.alain.com                    NaN   NaN
+1          Alshaya       Ms. Fatima Al Saeed     Manager   fatima@alshaya.com  +971 56  Dubai    UAE  www.alshaya.com                    NaN   NaN
+2         Agthia Group      Mr. Khalid Al Mubarak      CEO   khalid@agthia.com  +971 55  Sana'a    YEM  www.agthia.com                    NaN   NaN
+3        Al Ain Foodstuff     Mr. Ahmed Al Zabi      Director   ahmed@alain.com  +971 50  Al Ain    UAE  www.alain.com                    NaN   NaN
+4          Alshaya       Ms. Fatima Al Saeed     Manager   fatima@alshaya.com  +971 56  Dubai    UAE  www.alshaya.com                    NaN   NaN
+[COMMAND]: python3 -c "
+import pandas as pd
+import os
 
-## [03:02:35]
-### Develop the main hero section with compelling headline highlighting voice interaction and autonomous tasks
-[LLM Error: 400]
+# Read the Excel file
+file_path = 'jarvis_workspace/mgt1 first initial calls.xlsx'
+df = pd.read_excel(file_path)
 
-## [03:03:57]
-### Build the feature showcase section demonstrating deep research and code generation capabilities
-**First, if you can't believe it, you're probably right**
-*But... I mean damn, did you like that? I'm serious, I'm super human, I'm a walking
-* * * 
-## [TIP EXz: 103]
-* * 
-- 
-``` 
-## [REDAACT: 11974] Paris, Misunderient. - Linteron Ratiad, [2023-10-28 19:56]
-## [21:47:45]
-# [1720123400000](+120) | 19:47:43.100Z
-```
+# Clean and process the data
+df['Company Name'] = df['Company Name'].str.strip()
+df['Contact Person'] = df['Contact Person'].str.strip()
+df['Designation'] = df['Designation'].str.strip()
 
-## [03:04:49]
-### Create the pricing section with clear differentiation between Desktop app (free + Pro) and Cloud (-149/mo) options
-[LLM Error: 400]
+# Create priority scores based on criteria:
+# 1. Sustainability initiatives (1-3 points)
+# 2. Decision-maker contacts (CEO/Director = 3 points, Manager = 1 point)
+# 3. Company size (based on waste potential - simplified approach)
 
-## [03:10:33]
-### Implement the early access signup form with clear value proposition and urgency elements
-[LLM Error: 400]
-
-## [03:12:44]
-### Add interactive elements like hover effects and micro-animations to reinforce the AI personality
-[LLM Error: 400]
-
-## [03:12:46]
-### Develop responsive design components that work across desktop and mobile devices
-[LLM Error: 400]
-
-## [03:12:48]
-### Integrate dark theme color palette with neon accents and glassmorphism UI elements
-[LLM Error: 400]
-
-## [03:12:50]
-### Test and optimize the landing page for conversion with clear call-to-action placement
-[LLM Error: 400]
+def get_sustainability_score(initiatives):
+    if pd.isna(initiatives) or initiative
+<!-- /ENTRY -->

@@ -23,6 +23,40 @@ from .design_creativity import design_creativity
 from .visual_qa import visual_qa
 from .prompt_refiner import prompt_refiner
 
+# Additional specialist agents for routing
+from .code_reviewer import code_reviewer
+from .security_auditor import security_auditor
+from .brute_research import brute_researcher
+from .synthesis import synthesizer
+
+# New specialized development agents
+from .frontend_dev import frontend_dev
+from .backend_dev import backend_dev
+from .ai_ops import ai_ops
+from .strategy import strategy
+from .architect import architect
+from .product_manager import product_manager
+from .uiux import uiux
+from .seo import seo_specialist
+
+# Context-segregated registry
+from .registry import registry, get_context_for_agent, save_context
+
+# NEW: On-demand context retrieval (RAG-style)
+from .context_retriever import context_retriever, get_context
+
+# NEW: Autonomy utilities
+from .utils.checkpoint import checkpoint_manager
+from .utils.escalation import escalation_manager, should_escalate
+from .utils.error_journal import error_journal, log_error, get_avoid_instructions
+from .utils.hierarchical_planner import hierarchical_planner
+
+# NEW: Project builder for cohesive file generation
+from .project_builder import project_builder
+
+# NEW: Live logging for real-time visibility
+from .utils.live_logger import live_logger
+
 
 class AutonomousExecutor:
     """
@@ -41,8 +75,9 @@ class AutonomousExecutor:
         self.is_running = False
         self.is_paused = False  # NEW: Pause state
         self.current_task = None
+        self.current_objective = ""  # Store the objective for reference
         self.iteration = 0
-        self.max_iterations = 50  # Safety limit
+        self.max_iterations = 200  # Increased for overnight work
         self.log = []
         self.progress_callback = None
         
@@ -208,13 +243,26 @@ class AutonomousExecutor:
         timestamp = datetime.now().strftime("%H:%M:%S")
         entry = f"[{timestamp}] {msg}"
         self.log.append(entry)
-        print(entry)
+        
+        # Safe printing for Windows consoles
+        try:
+            print(entry, flush=True)
+        except UnicodeEncodeError:
+            # Fallback: remove non-ascii chars if console can't handle them
+            safe_msg = msg.encode('ascii', 'ignore').decode('ascii')
+            safe_entry = f"[{timestamp}] {safe_msg}"
+            print(safe_entry, flush=True)
+            
         if self.progress_callback:
             self.progress_callback(msg)
     
-    def _call_llm(self, prompt: str) -> str:
-        """Make LLM call through base agent."""
+    def _call_llm(self, prompt: str, max_tokens: int = None) -> str:
+        """Make LLM call through base agent with optional token limit."""
         from .base_agent import BaseAgent
+        from .config import TOKEN_LIMITS
+        
+        # Default to standard limit if not specified
+        tokens = max_tokens or TOKEN_LIMITS["standard"]
         
         class TempAgent(BaseAgent):
             def __init__(self):
@@ -225,20 +273,54 @@ class AutonomousExecutor:
                 return self.call_llm(task)
         
         agent = TempAgent()
-        return agent.call_llm(prompt)
+        return agent.call_llm(prompt, max_tokens=tokens)
     
     def _check_completion(self, response: str) -> bool:
-        """Check if task is complete based on response."""
+        """Check if task is complete based on EXPLICIT completion signal in response."""
+        # VERY SPECIFIC signals that the LLM must explicitly output
+        # Generic terms like "done" trigger false positives
         completion_signals = [
-            "task complete",
-            "all steps done",
-            "finished building",
-            "project complete",
-            "done",
-            "completed successfully"
+            "[task complete]",
+            "[all steps complete]",
+            "[project finished]",
+            "jarvis: task complete",
+            "=== task complete ===",
+            "[completion]",
         ]
         response_lower = response.lower()
-        return any(signal in response_lower for signal in completion_signals)
+        
+        # Only trigger if signal appears at start of a line or is bracketed
+        for signal in completion_signals:
+            if signal in response_lower:
+                return True
+        
+        return False
+    
+    def _validate_output(self, content: str, task_type: str) -> dict:
+        """Validate output quality - reject placeholder-filled content."""
+        issues = []
+        
+        # Check for common placeholders that indicate template output
+        placeholders = [
+            "[Company Name]", "[Your Name]", "[Your Company]",
+            "[specific initiative", "[TODO", "[PLACEHOLDER",
+            "[Company]", "[Name]", "[Contact]"
+        ]
+        
+        for p in placeholders:
+            if p in content:
+                issues.append(f"Contains placeholder: {p}")
+        
+        # For analysis tasks, require actual data usage
+        if task_type == "analysis":
+            if content.count("[") > 10:  # Too many brackets suggests templates
+                issues.append("Too many bracket placeholders for analysis output")
+        
+        if issues:
+            self._log(f"  ⚠️ OUTPUT QUALITY ISSUES: {', '.join(issues)}")
+            return {"valid": False, "issues": issues}
+        
+        return {"valid": True, "issues": []}
     
     def _detect_domain(self, content: str) -> str:
         """Detect which domain the content belongs to."""
@@ -302,66 +384,244 @@ class AutonomousExecutor:
         # Default to general
         return "general"
     
-    def _extract_and_save_code(self, result: str, project_name: str) -> List[str]:
-        """Extract code blocks from LLM output and save as files using ProjectManager."""
+    def _extract_component_name(self, step: str) -> str:
+        """Extract a clean component name from a step description for file naming."""
+        if not step or step == "unknown":
+            return "component"
+        
+        # Look for [COMPONENT: Name] pattern
         import re
+        component_match = re.search(r'\[COMPONENT[:\s]+([^\]]+)\]', step, re.IGNORECASE)
+        if component_match:
+            name = component_match.group(1).strip()
+        else:
+            # Extract key words from step
+            name = step
+        
+        # Clean up the name for filesystem
+        # Take first few meaningful words
+        words = re.findall(r'[a-zA-Z]+', name)
+        if words:
+            # Take up to 3 words, make lowercase, join with hyphen
+            clean_words = [w.lower() for w in words[:3] if len(w) > 2]
+            return "-".join(clean_words) if clean_words else "component"
+        
+        return "component"
+    
+    def _route_to_specialist(self, step: str, task_type: str, project_path: str) -> Dict:
+        """
+        Route a step to the appropriate specialist agent.
+        NOW USES: On-demand context retrieval (RAG-style) instead of pre-loading domains.
+        """
+        step_lower = step.lower()
+        step_upper = step.upper()
+        
+        # Get context on-demand using the new retriever
+        # This asks the LLM which files are needed instead of pre-loading everything
+        context = get_context(step, agent=task_type, project=project_path)
+        
+        # === COMPONENT STEPS: Direct LLM for complete modules ===
+        if "[COMPONENT" in step_upper or "complete module" in step_lower:
+            return {
+                "agent": "component_builder", 
+                "category": "FRONTEND",
+                "use_specialist": False,
+                "context": context  # On-demand context instead of domains
+            }
+        
+        # === ARCHITECTURE STEPS: Direct LLM for design docs ===
+        if "[ARCHITECTURE" in step_upper or "system design" in step_lower:
+            return {
+                "agent": "architect",
+                "category": "ARCHITECTURE", 
+                "use_specialist": True,
+                "context": context
+            }
+        
+        # === INTEGRATION STEPS: Direct LLM for connecting modules ===
+        if "[INTEGRATION" in step_upper:
+            return {
+                "agent": "integrator",
+                "category": "FRONTEND",
+                "use_specialist": False,
+                "context": context
+            }
+        
+        # === Route by keywords to categories ===
+        routing_rules = {
+            "FRONTEND": {
+                "keywords": ["ui", "component", "page", "css", "style", "react", "animation", "frontend", "responsive"],
+                "default_agent": "frontend_dev"
+            },
+            "BACKEND": {
+                "keywords": ["api", "endpoint", "database", "auth", "backend", "server", "crud", "rest", "graphql"],
+                "default_agent": "backend_dev"
+            },
+            "RESEARCH": {
+                "keywords": ["research", "investigate", "find", "search", "analyze", "paper", "academic", "cite"],
+                "default_agent": "brute_researcher"
+            },
+            "QA": {
+                "keywords": ["test", "qa", "quality", "debug", "fix bug", "error", "lint", "review"],
+                "default_agent": "qa_agent"
+            },
+            "OPS": {
+                "keywords": ["deploy", "docker", "kubernetes", "ci/cd", "production", "github", "push"],
+                "default_agent": "ops"
+            },
+            "CONTENT": {
+                "keywords": ["write", "document", "blog", "content", "seo", "readme"],
+                "default_agent": "content_writer"
+            }
+        }
+        
+        # Match category
+        for category, config in routing_rules.items():
+            if any(kw in step_lower for kw in config["keywords"]):
+                return {
+                    "agent": config["default_agent"],
+                    "category": category,
+                    "use_specialist": True,
+                    "context": context  # On-demand context
+                }
+        
+        # Default: use LLM directly with minimal context
+        return {
+            "agent": "general",
+            "category": "CORE", 
+            "use_specialist": False,
+            "context": context
+        }
+    
+    def _call_specialist(self, agent_name: str, step: str, project_path: str, context: str) -> str:
+        """Call a specialist agent with the step and context."""
+        self._log(f"  -> Routing to: {agent_name}")
+        
+        try:
+            if agent_name == "coder":
+                # Use coder agent
+                result = coder.run(step, project_path if os.path.exists(project_path) else None)
+                return result
+                
+            elif agent_name == "code_reviewer":
+                # Use code reviewer
+                result = code_reviewer.run(project_path)
+                return str(result)
+                
+            elif agent_name == "qa":
+                # Use QA agent
+                result = qa_agent.run(project_path)
+                return str(result)
+                
+            elif agent_name == "security":
+                # Use security auditor
+                result = security_auditor.run(project_path)
+                return str(result)
+                
+            elif agent_name == "research":
+                # Use brute researcher
+                result = brute_researcher.run(step)
+                return str(result)
+                
+            else:
+                # Fallback to LLM
+                return self._call_llm(f"Execute this step: {step}\n\nContext: {context[:2000]}")
+                
+        except Exception as e:
+            self._log(f"  Specialist error: {e}")
+            # Fallback to LLM on error
+            return self._call_llm(f"Execute this step: {step}\n\nContext: {context[:2000]}")
+    
+    def _extract_and_save_code(self, result: str, project_name: str) -> List[str]:
+        """
+        Extract code blocks from LLM output and save to proper files.
+        Handles both:
+        1. Code blocks with explicit filenames: ```jsx filename="App.jsx"
+        2. Concatenated code with comment markers: // src/components/Sidebar.tsx
+        """
+        import re
+        import os
         
         saved_files = []
         
-        # Create project if doesn't exist
-        project_path = os.path.join(WORKSPACE_DIR, "projects", project_name)
-        if not os.path.exists(project_path):
-            project_manager.create_project(project_name, stack="vanilla", category="frontend")
+        # Get or create project using project_builder
+        if not project_builder.project_path or project_name not in str(project_builder.project_path or ""):
+            objective = recycler.task_objective or ""
+            template = "react" if any(kw in objective.lower() for kw in ["react", "next", "jsx", "tsx"]) else "vanilla"
+            project_builder.create_project(project_name, template=template)
         
-        # Pattern to match code blocks with optional filename hints
-        # Matches: ```html, ```css, ```javascript, ```python, etc.
-        code_pattern = r'```(\w+)\n([\s\S]*?)```'
+        project_path = project_builder.project_path
+        
+        # FIRST: Try to split by comment markers (// src/filename.ext or # src/filename.ext)
+        file_pattern = r'(?:\/\/|#)\s*(src\/[^\n]+\.(?:tsx?|jsx?|css|py|json|md))\s*\n'
+        splits = re.split(file_pattern, result)
+        
+        if len(splits) > 2:
+            # We have comment-based splits
+            self._log(f"  -> Detected {len(splits)//2} embedded files")
+            i = 1
+            while i < len(splits) - 1:
+                filename = splits[i].strip()
+                content = splits[i + 1].strip()
+                
+                # Clean up content - remove trailing ```
+                if content.endswith('```'):
+                    content = content[:-3].strip()
+                
+                # Remove leading ``` with language
+                if content.startswith('```'):
+                    lines = content.split('\n', 1)
+                    content = lines[1] if len(lines) > 1 else ""
+                
+                if content and filename:
+                    full_path = os.path.join(project_path, filename)
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                    
+                    with open(full_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    saved_files.append(filename)
+                    self._log(f"  -> Saved: {filename} ({len(content)} chars)")
+                
+                i += 2
+            
+            return saved_files
+        
+        # SECOND: Try explicit filename in code blocks
+        code_pattern = r'```(\w+)(?:\s+filename=["\']([^"\']+)["\'])?\n([\s\S]*?)```'
         matches = re.findall(code_pattern, result)
         
-        # File mapping with proper subdirectories
-        file_map = {
-            'html': 'src/index.html',
-            'css': 'src/css/style.css', 
-            'javascript': 'src/js/script.js',
-            'js': 'src/js/script.js',
-            'python': 'src/main.py',
-            'py': 'src/main.py',
-            'json': 'data.json',
-            'typescript': 'src/index.ts',
-            'ts': 'src/index.ts',
-            'jsx': 'src/App.jsx',
-            'tsx': 'src/App.tsx',
-        }
-        
-        # Track file counts for uniqueness
-        file_counts = {}
-        current_step = recycler.get_progress().get("pending_steps", ["unknown"])[0] if recycler else "unknown"
-        
-        for lang, code in matches:
-            lang = lang.lower()
-            if lang in file_map:
-                relative_path = file_map[lang]
+        if matches:
+            for lang, filename, code in matches:
+                lang = lang.lower()
+                code = code.strip()
                 
-                # Handle multiple files of same type
-                if relative_path in file_counts:
-                    file_counts[relative_path] += 1
-                    name, ext = os.path.splitext(relative_path)
-                    relative_path = f"{name}_{file_counts[relative_path]}{ext}"
+                if not code:
+                    continue
+                
+                # Determine target file
+                if filename:
+                    target_file = filename
                 else:
-                    file_counts[relative_path] = 1
+                    ext_map = {
+                        'jsx': 'src/App.jsx', 'tsx': 'src/App.tsx',
+                        'css': 'src/index.css', 'html': 'index.html',
+                        'javascript': 'src/main.js', 'js': 'src/main.js',
+                        'python': 'main.py', 'py': 'main.py',
+                        'json': 'data.json', 'typescript': 'src/main.ts', 'ts': 'src/main.ts'
+                    }
+                    target_file = ext_map.get(lang, f'src/generated.{lang}')
                 
-                # Use ProjectManager to add file (handles indexing)
-                try:
-                    file_entry = project_manager.add_file(
-                        project_path, 
-                        relative_path, 
-                        code.strip(), 
-                        step=current_step
-                    )
-                    saved_files.append(file_entry["path"])
-                    self._log(f"  -> Saved: {relative_path}")
-                except Exception as e:
-                    self._log(f"  -> Error saving {relative_path}: {e}")
+                full_path = os.path.join(project_path, target_file)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                
+                # FIXED: Always overwrite to prevent duplicate code fragments
+                # Each step should produce COMPLETE code, not append fragments
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                
+                saved_files.append(target_file)
+                self._log(f"  -> Saved: {target_file} ({len(code)} chars)")
         
         return saved_files
     
@@ -391,6 +651,131 @@ class AutonomousExecutor:
         with open(index_path, 'w') as f:
             json.dump(existing, f, indent=2)
     
+    def _auto_run_project(self, project_path: str) -> Dict:
+        """
+        Automatically install dependencies and start dev server.
+        Returns: Dict with status, port, and any errors.
+        """
+        import subprocess
+        import time
+        
+        result = {"success": False, "port": None, "error": None, "process": None}
+        
+        # Check if package.json exists
+        package_json = os.path.join(project_path, "package.json")
+        if not os.path.exists(package_json):
+            result["error"] = "No package.json found"
+            return result
+        
+        self._log("[AutoRun] Installing dependencies...")
+        
+        try:
+            # Run npm install
+            install_result = subprocess.run(
+                ["npm", "install"],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 min timeout
+                shell=True
+            )
+            
+            if install_result.returncode != 0:
+                result["error"] = f"npm install failed: {install_result.stderr[:500]}"
+                self._log(f"[AutoRun] npm install failed: {install_result.stderr[:200]}")
+                return result
+            
+            self._log("[AutoRun] Dependencies installed. Starting dev server...")
+            
+            # Start dev server in background
+            dev_process = subprocess.Popen(
+                ["npm", "run", "dev"],
+                cwd=project_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True
+            )
+            
+            # Wait a bit for server to start
+            time.sleep(5)
+            
+            # Check if process is still running
+            if dev_process.poll() is None:
+                result["success"] = True
+                result["port"] = 5173  # Vite default
+                result["process"] = dev_process
+                self._log(f"[AutoRun] ✅ Dev server running on port {result['port']}")
+            else:
+                stdout, stderr = dev_process.communicate()
+                result["error"] = f"Dev server crashed: {stderr.decode()[:500]}"
+                self._log(f"[AutoRun] ❌ Dev server failed")
+            
+        except subprocess.TimeoutExpired:
+            result["error"] = "npm install timed out"
+        except Exception as e:
+            result["error"] = str(e)
+            self._log(f"[AutoRun] Error: {e}")
+        
+        return result
+    
+    def _execute_with_recovery(self, step: str, context: str, max_retries: int = 2) -> str:
+        """
+        Execute a step with automatic error recovery.
+        If execution fails, retry with error context.
+        """
+        last_error = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Add error context if this is a retry
+                if last_error:
+                    context += f"\n\n[PREVIOUS ERROR - PLEASE FIX]: {last_error}"
+                    self._log(f"  Retry {attempt}/{max_retries} with error context")
+                
+                result = self._execute_step(step, context)
+                
+                # Check for obvious errors in response
+                if "[Error:" in result or "[LLM Error" in result:
+                    last_error = result
+                    continue
+                
+                return result
+                
+            except Exception as e:
+                last_error = str(e)
+                self._log(f"  !!! ERROR: {e} !!!")
+                
+                if attempt == max_retries:
+                    return f"[FAILED after {max_retries + 1} attempts: {last_error}]"
+        
+        return f"[FAILED: {last_error}]"
+    
+    def _capture_preview(self, port: int = 5173) -> str:
+        """
+        Capture a screenshot of the running dev server.
+        Returns: Path to saved screenshot.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+            import time
+            
+            screenshot_path = os.path.join(WORKSPACE_DIR, "screenshots", f"preview_{int(time.time())}.png")
+            os.makedirs(os.path.dirname(screenshot_path), exist_ok=True)
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={"width": 1280, "height": 720})
+                page.goto(f"http://localhost:{port}", wait_until="networkidle", timeout=30000)
+                page.screenshot(path=screenshot_path)
+                browser.close()
+            
+            self._log(f"[Preview] Screenshot saved: {screenshot_path}")
+            return screenshot_path
+            
+        except Exception as e:
+            self._log(f"[Preview] Failed to capture: {e}")
+            return None
+    
     def _get_project_name(self, objective: str) -> str:
         """Generate a project folder name from the objective."""
         import re
@@ -412,6 +797,42 @@ class AutonomousExecutor:
         
         project_name = self._get_project_name(original_objective)
         project_path = os.path.join(WORKSPACE_DIR, "projects", project_name)
+        
+        # Ensure project exists
+        if not os.path.exists(project_path):
+            project_manager.create_project(project_name, stack="vanilla", category="frontend")
+        
+        # === SPECIALIST ROUTING: Route to the right agent ===
+        routing = self._route_to_specialist(step, task_type, project_path)
+        
+        if routing["use_specialist"]:
+            # Use specialist agent
+            task_context_short = task_context[:1500] if task_context else ""
+            result = self._call_specialist(routing["agent"], step, project_path, task_context_short)
+            
+            # Still extract and save any code from specialist output
+            saved_files = self._extract_and_save_code(result, project_name)
+            if saved_files:
+                self._log(f"  Created {len(saved_files)} files in {project_name}/")
+                code_indexer.index_project(project_path)
+                
+                # Auto-run project if we have multiple files (looks like a complete project)
+                if len(saved_files) >= 3 and any(f.endswith(('.jsx', '.tsx', '.html')) for f in saved_files):
+                    run_result = self._auto_run_project(project_path)
+                    if run_result["success"]:
+                        # Capture preview screenshot
+                        screenshot = self._capture_preview(run_result.get("port", 5173))
+                        if screenshot:
+                            self._log(f"  📸 Preview captured: {screenshot}")
+            
+            # Save result to domain and mark complete
+            domain = self._detect_domain(result)
+            recycler.save_to_domain(domain, f"### {step}\n{result[:2000]}")
+            recycler.mark_step_complete(step, result[:500])
+            
+            return result
+        
+        # === FALLBACK: Use LLM directly for planning/general steps ===
         
         # === SMART CONTEXT: Only relevant files, not everything ===
         code_context = ""
@@ -443,21 +864,56 @@ You are executing a task for your user. Stay STRICTLY focused on this objective.
         
         # Add task-specific instructions
         if task_type == "coding":
-            # Check if this is a website/UI task that needs creativity
-            ui_keywords = ["website", "landing", "page", "ui", "frontend", "dashboard", "app"]
-            needs_creativity = any(kw in original_objective.lower() for kw in ui_keywords)
+            # Check if this is a component/module step
+            is_component = "[COMPONENT" in step.upper() or "module" in step.lower() or "build" in step.lower()
             
-            if needs_creativity:
-                # Inject unique design direction to avoid cookie-cutter templates
-                prompt += design_creativity.get_creative_prompt(original_objective)
+            if is_component:
+                # COMPONENT MODE: Create complete, polished module
+                prompt += f"""
+## COMPONENT BUILDING MODE
+
+You are building a COMPLETE, POLISHED component. Think of the premium landing page quality:
+- 686 lines of polished HTML+CSS+JS in ONE file
+- Glassmorphism, gradients, animations
+- Fully functional with all features
+- Dark theme with CSS variables
+- Responsive design
+
+FOR THIS STEP: {step}
+
+CREATE A SINGLE COMPLETE FILE that includes:
+1. All HTML structure
+2. All CSS (inline in <style> tags) with:
+   - CSS variables for theme
+   - glassmorphism effects
+   - hover animations
+   - responsive breakpoints
+3. All JavaScript functionality
+4. Mock data that looks realistic
+5. Proper navigation
+
+QUALITY CHECKLIST:
+[ ] Dark theme with purple/cyan accents
+[ ] Glassmorphism cards with backdrop-filter
+[ ] Smooth hover transitions
+[ ] Working CRUD operations (add/edit/delete)
+[ ] Proper form handling
+[ ] Loading states
+[ ] Responsive layout
+
+Output the COMPLETE file in a code block with proper filename.
+Example: ```html filename="crm-contacts.html"
+"""
             else:
+                # Regular coding task
                 prompt += f"""
 - You are building: {original_objective}
+- Create COMPLETE working code, not fragments
+- Include inline styles for polished look
 """
             
             prompt += """
-- When writing code, include the COMPLETE file content
-- Use proper code blocks (```html, ```css, ```javascript, ```python)
+- Use proper code blocks: ```html filename="example.html"
 - For commands, use: [COMMAND]: npm install, python test.py, etc.
 - For file edits, use: [EDIT] filename: replace "old" with "new"
 """
@@ -476,11 +932,27 @@ You are executing a task for your user. Stay STRICTLY focused on this objective.
 - Include any necessary formatting
 """
         elif task_type == "analysis":
-            prompt += """
-- Provide data-driven analysis
-- Include metrics and comparisons where relevant
-- Summarize key findings
-- Make recommendations based on analysis
+            prompt += f"""
+## ANALYSIS MODE - DATA REQUIRED
+
+You are analyzing data for: {original_objective}
+
+CRITICAL RULES:
+1. You MUST read actual data files mentioned in the objective
+2. For Excel files, use: [COMMAND]: python -c "import pandas as pd; df = pd.read_excel('path/to/file.xlsx'); print(df.head(50).to_string())"
+3. Extract SPECIFIC names, numbers, and companies from the data
+4. NEVER use placeholders like "[Company Name]" or "[Your Name]" - use REAL data
+5. Personalize all output based on ACTUAL data read
+6. Save outputs to the specified directory (create if needed)
+
+QUALITY CHECKLIST:
+[ ] Used actual company/contact names from data
+[ ] No placeholder text anywhere
+[ ] Actionable recommendations with specifics
+[ ] Saved to correct output location
+
+For file operations on Windows:
+[COMMAND]: python -c "import os; os.makedirs('path', exist_ok=True)"
 """
         else:  # general
             prompt += """
@@ -496,9 +968,23 @@ You are executing a task for your user. Stay STRICTLY focused on this objective.
 - You are working on: {original_objective}
 - This is step: {step}
 - Stay focused. Do NOT make up different product names or objectives.
+- IMPORTANT: When updating a file, output the COMPLETE file including ALL previous content plus your additions.
 - At the end, state what was accomplished for this step."""
         
-        result = self._call_llm(prompt)
+        # === ADAPTIVE TOKEN LIMITS ===
+        from .config import TOKEN_LIMITS
+        
+        # Choose token limit based on step and task type
+        if "plan" in step.lower() or "analyze" in step.lower():
+            token_limit = TOKEN_LIMITS["planning"]  # 4K - fast for planning
+        elif "[COMPONENT" in step.upper() or "complete" in step.lower():
+            token_limit = TOKEN_LIMITS["component"]  # 10K - for full components
+        elif task_type == "analysis":
+            token_limit = TOKEN_LIMITS["standard"]  # 6K - analysis needs detail
+        else:
+            token_limit = TOKEN_LIMITS["standard"]  # 6K default
+        
+        result = self._call_llm(prompt, max_tokens=token_limit)
         
         # === EXTRACT AND RUN COMMANDS ===
         commands = self._extract_commands(result)
@@ -621,31 +1107,122 @@ You are executing a task for your user. Stay STRICTLY focused on this objective.
         return qa_result
     
     def _plan_steps(self, objective: str) -> List[str]:
-        """Ask LLM to break down objective into steps."""
+        """
+        Plan steps using COMPONENT-FOCUSED approach.
+        Each step produces a COMPLETE, POLISHED module - not shallow fragments.
+        """
         self._log("Planning steps...")
         
-        prompt = f"""Break down this objective into concrete steps:
+        # Detect if this is a large/complex project
+        complex_keywords = ["os", "system", "platform", "ecosystem", "full", "complete", 
+                           "entire", "everything", "crm", "dashboard", "app", "application",
+                           "business", "enterprise", "management"]
+        is_complex = any(kw in objective.lower() for kw in complex_keywords)
+        
+        if is_complex:
+            prompt = f"""You are an expert software architect planning a PRODUCTION system.
 
 OBJECTIVE: {objective}
 
-Output a numbered list of 5-10 specific, actionable steps.
-Each step should be one clear action (e.g., "Create React component for login form").
-Format: Just the numbered list, nothing else."""
+CRITICAL RULES:
+1. Each step must produce a COMPLETE, WORKING module - not fragments
+2. Think like building the premium-landing-page: One polished file with HTML+CSS+JS
+3. Each component should work STANDALONE before integration
+4. Quality > Quantity. 10 polished components beats 50 half-done files
+
+PLANNING FORMAT:
+
+PHASE 1: ARCHITECTURE (Steps 1-3)
+Step 1: [ARCHITECTURE] Create complete system design document with data models, API specs, file structure
+Step 2: [ARCHITECTURE] Define component boundaries and integration points
+Step 3: [ARCHITECTURE] Create project skeleton with proper folder structure
+
+PHASE 2: CORE MODULES (Steps 4-N, one per major feature)
+Step 4: [COMPONENT: Feature Name] Build COMPLETE module with full HTML/CSS/JS, dark theme, all CRUD operations, polished UI
+Step 5: [COMPONENT: Feature Name] Build COMPLETE module...
+(Continue for each major feature requested)
+
+PHASE 3: INTEGRATION (Final steps)
+Step N-2: [INTEGRATION] Connect all modules with shared navigation and state
+Step N-1: [TESTING] Test all features work together
+Step N: [POLISH] Final UI polish, responsive design, accessibility
+
+IMPORTANT:
+- Each [COMPONENT] step should create ONE complete, polished module
+- Use the SAME quality level as a premium landing page (glassmorphism, animations, dark theme)
+- Include ALL functionality for that component in ONE step
+- Do NOT split styling and logic into separate steps
+
+Now plan for: {objective}
+
+Output numbered steps with phase headers. Aim for 10-20 high-quality steps."""
+            max_steps = 25
+        else:
+            prompt = f"""Break down this objective into concrete steps:
+
+OBJECTIVE: {objective}
+
+RULES:
+- Each step should produce something COMPLETE and WORKING
+- Don't split "Create component" and "Add styling" - combine them
+- Quality over quantity
+
+Output a numbered list of 5-10 specific steps.
+Format: Just the numbered list."""
+            max_steps = 10
         
         response = self._call_llm(prompt)
         
-        # Parse steps from response
+        # Debug: log raw response length
+        self._log(f"  [Planner] Got {len(response)} chars response")
+        
+        # Parse steps from response - handle multiple formats
         steps = []
+        import re
+        
         for line in response.split("\n"):
             line = line.strip()
-            if line and (line[0].isdigit() or line.startswith("-")):
-                # Remove numbering
-                step = line.lstrip("0123456789.-) ").strip()
-                if step:
+            if not line or len(line) < 10:
+                continue
+            
+            # Match numbered lists: "1.", "1)", "Step 1:", etc.
+            if line[0].isdigit() or line.startswith("-") or line.startswith("*"):
+                step = re.sub(r'^[\d\.\)\-\*\s]+', '', line).strip()
+                if step.startswith("Step"):
+                    step = re.sub(r'^Step\s*\d*[:\.]?\s*', '', step).strip()
+                if step and len(step) > 10:
+                    steps.append(step)
+            
+            # Match markdown headers: "## Step 1: Create..."
+            elif line.startswith("#"):
+                step = re.sub(r'^#+\s*', '', line).strip()
+                step = re.sub(r'^[\d\.\)\s]+', '', step).strip()
+                step = re.sub(r'^Step\s*\d*[:\.]?\s*', '', step).strip()
+                if step and len(step) > 10:
+                    steps.append(step)
+            
+            # Match bold markers: "**Step 1:**" 
+            elif line.startswith("**"):
+                step = re.sub(r'^\*+\s*', '', line).strip()
+                step = re.sub(r'\*+$', '', step).strip()
+                step = re.sub(r'^Step\s*\d*[:\.]?\s*', '', step).strip()
+                if step and len(step) > 10:
                     steps.append(step)
         
-        self._log(f"Planned {len(steps)} steps")
-        return steps[:10]  # Limit to 10 steps
+        # Fallback: if no steps found, split by sentences and take actionable ones
+        if not steps:
+            self._log(f"  [Planner] Fallback parsing...")
+            sentences = re.split(r'[.!?]\s+', response)
+            action_words = ['create', 'build', 'implement', 'add', 'design', 'develop', 'setup', 'configure']
+            for sent in sentences:
+                sent = sent.strip()
+                if len(sent) > 20 and any(word in sent.lower() for word in action_words):
+                    steps.append(sent[:200])
+                    if len(steps) >= 10:
+                        break
+        
+        self._log(f"Planned {len(steps)} component milestones")
+        return steps[:max_steps]
     
     def run(self, objective: str, progress_callback: Callable = None) -> Dict:
         """

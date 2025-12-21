@@ -1,0 +1,164 @@
+[
+  {
+    "id": "cover",
+    "title": "Jarvis AI",
+    "subtitle": "AI co-founder for busy founders",
+    "content": []
+  },
+  {
+    "id": "problem",
+    "title": "The Problem",
+    "subtitle": "Founders overwhelmed by admin tasks",
+    "content": [
+      "80% time spent on ops",
+      "No real focus left",
+      "Missed opportunities",
+      "Burnout rising"
+    ],
+    "stat": "73% of founders report burnout"
+  },
+  {
+    "id": "solution",
+    "title": "Our Solution",
+    "subtitle": "AI co-founder assistant",
+    "content": [
+      "Handles routine tasks",
+      "Focuses on strategy",
+      "Grows with you",
+      "Works 24/7"
+    ],
+    "key_benefit": "More time, less stress"
+  },
+  {
+    "id": "market",
+    "title": "Market Opportunity",
+    "subtitle": null,
+    "tam": "$10B",
+    "sam": "$3B",
+    "som": "$500M",
+    "content": [
+      "Startup ecosystem expanding",
+      "AI adoption accelerating",
+      "Remote work driving demand",
+      "Founder productivity tools"
+    ]
+  },
+  {
+    "id": "product",
+    "title": "Product",
+    "subtitle": "How it works",
+    "content": [
+      "Task automation engine",
+      "Strategic planning assistant",
+      "Meeting summarizer",
+      "Growth tracker dashboard"
+    ],
+    "note": "Screenshot/demo would go here"
+  },
+  {
+    "id": "business_model",
+    "title": "Business Model",
+    "subtitle": null,
+    "pricing": "Subscription model",
+    "content": [
+      "Monthly SaaS fees",
+      "Enterprise custom plans",
+      "API access for partners",
+      "Premium integrations"
+    ],
+    "unit_economics": "LTV/CAC ratio 6x"
+  },
+  {
+    "id": "traction",
+    "title": "Traction",
+    "subtitle": null,
+    "metrics": [
+      {
+        "label": "Active users",
+        "value": "120",
+        "growth": "+35%"
+      }
+    ],
+    "milestones": [
+      "MVP launched internally",
+      "Beta testing with 3 startups"
+    ]
+  },
+  {
+    "id": "competition",
+    "title": "Competitive Landscape",
+    "subtitle": null,
+    "differentiator": "Real-time strategic support",
+    "competitors": [
+      "Notion",
+      "Calendly",
+      "Slack",
+      "Asana"
+    ],
+    "our_advantage": "AI-driven co-founder"
+  },
+  {
+    "id": "team",
+    "title": "Team",
+    "subtitle": null,
+    "members": [
+      {
+        "name": "Alex Chen",
+        "role": "CEO",
+        "credential": "Former startup CTO"
+      }
+    ]
+  },
+  {
+    "id": "financials",
+    "title": "Financials",
+    "subtitle": "Projections",
+    "projections": [
+      {
+        "year": "Year 1",
+        "revenue": "$0"
+      },
+      {
+        "year": "Year 3",
+        "revenue": "$2.5M"
+      },
+      {
+        "year": "Year 5",
+        "revenue": "$12M"
+      }
+    ],
+    "path_to_profitability": "Break-even by Q4 Year 3"
+  },
+  {
+    "id": "ask",
+    "title": "The Ask",
+    "subtitle": null,
+    "amount": "$500K",
+    "use_of_funds": [
+      {
+        "category": "Product",
+        "percentage": "50%"
+      },
+      {
+        "category": "Growth",
+        "percentage": "30%"
+      },
+      {
+        "category": "Team",
+        "percentage": "20%"
+      }
+    ],
+    "milestones_with_funding": [
+      "Complete MVP",
+      "Launch beta program",
+      "Secure 50 paying customers"
+    ]
+  },
+  {
+    "id": "contact",
+    "title": "Let's Build Together",
+    "subtitle": null,
+    "cta": "Join the future of AI co-founders",
+    "contact": "alex@jarvis.ai"
+  }
+]

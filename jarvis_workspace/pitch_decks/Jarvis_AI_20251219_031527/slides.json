@@ -1,0 +1,160 @@
+[
+  {
+    "id": "cover",
+    "title": "Jarvis AI",
+    "subtitle": "AI-powered autonomous execution system that acts as a co-fou"
+  },
+  {
+    "id": "problem",
+    "title": "The Problem",
+    "subtitle": "What we're solving",
+    "content": [
+      "Growing demand for AI-powered business t",
+      "Partnership opportunities with incubator",
+      "Expansion into international markets wit"
+    ],
+    "stat": "TBD - Add real statistic"
+  },
+  {
+    "id": "solution",
+    "title": "Our Solution",
+    "subtitle": "AI-powered autonomous execution system that acts a",
+    "content": [
+      "24/7 availability",
+      "Strategic planning assistance",
+      "Market research and competitive analysis",
+      "Product development guidance"
+    ]
+  },
+  {
+    "id": "market",
+    "title": "Market Opportunity",
+    "tam": "$120B",
+    "sam": "$36B",
+    "som": "$2.4B",
+    "content": [
+      "Rapid AI adoption across startups",
+      "Growing demand for productivity tools",
+      "Increased venture capital funding for AI startups"
+    ],
+    "has_chart": true
+  },
+  {
+    "id": "product",
+    "title": "Product",
+    "subtitle": "How it works",
+    "content": [
+      "AI model training",
+      "Platform development",
+      "Data collection and analysis",
+      "Feature updates"
+    ]
+  },
+  {
+    "id": "business_model",
+    "title": "Business Model",
+    "content": [
+      "Subscription fees",
+      "Enterprise licensing",
+      "Premium feature add-ons",
+      "Consulting services"
+    ]
+  },
+  {
+    "id": "traction",
+    "title": "Traction",
+    "metrics": [
+      {
+        "label": "Users",
+        "value": "Beta"
+      }
+    ],
+    "milestones": [
+      "MVP Complete",
+      "Core agents working"
+    ]
+  },
+  {
+    "id": "competition",
+    "title": "Competitive Landscape",
+    "competitors": [
+      "Chatfuel",
+      "ManyChat",
+      "Flow XO",
+      "Botpress"
+    ],
+    "our_advantage": "More intuitive user interface",
+    "has_chart": true
+  },
+  {
+    "id": "team",
+    "title": "Team",
+    "members": [
+      {
+        "name": "Ibrahim",
+        "role": "Founder",
+        "credential": "Built Jarvis from scratch"
+      }
+    ],
+    "note": null
+  },
+  {
+    "id": "financials",
+    "title": "Financials",
+    "projections": [
+      {
+        "year": "Year 1",
+        "revenue": "$300,000"
+      },
+      {
+        "year": "Year 2",
+        "revenue": "$336,000"
+      },
+      {
+        "year": "Year 3",
+        "revenue": "$376,320"
+      },
+      {
+        "year": "Year 4",
+        "revenue": "$413,952"
+      },
+      {
+        "year": "Year 5",
+        "revenue": "$455,347"
+      }
+    ],
+    "break_even": "Month 18",
+    "has_chart": true
+  },
+  {
+    "id": "ask",
+    "title": "The Ask",
+    "amount": "TBD",
+    "use_of_funds": [
+      {
+        "category": "Product",
+        "percentage": "50%"
+      },
+      {
+        "category": "Growth",
+        "percentage": "30%"
+      },
+      {
+        "category": "Team",
+        "percentage": "20%"
+      }
+    ],
+    "milestones": [
+      "Launch public beta",
+      "Achieve product-market fit"
+    ],
+    "has_chart": true
+  },
+  {
+    "id": "contact",
+    "title": "Let's Build Together",
+    "subtitle": "Ready to transform your business",
+    "contact": "contact@jarvisai.io",
+    "cta": "Schedule a Demo"
+  }
+]

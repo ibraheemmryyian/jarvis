@@ -1,0 +1,49 @@
+{
+  "competitive_rivalry": {
+    "intensity": "high",
+    "factors": [
+      "Rapid technological advancement, high customer acquisition costs, differentiation through AI capabilities, market saturation in mature segments"
+    ],
+    "key_players": [
+      "OpenAI, Anthropic, Google DeepMind, Microsoft Azure AI, Amazon SageMaker, Hugging Face, IBM Watson, Salesforce Einstein"
+    ],
+    "impact": "High rivalry compresses margins and forces continuous innovation, requiring substantial R&D investment to maintain competitive positioning"
+  },
+  "threat_of_new_entrants": {
+    "threat_level": "high",
+    "entry_barriers": [
+      "High capital requirements for AI model development, need for specialized talent, regulatory compliance, established ecosystem lock-in"
+    ],
+    "capital_requirements": "high",
+    "impact": "New entrants can disrupt niche markets and drive price competition, forcing incumbents to invest heavily in R&D and customer retention"
+  },
+  "bargaining_power_suppliers": {
+    "power_level": "medium",
+    "key_suppliers": [
+      "Cloud infrastructure providers (AWS, Azure, GCP), specialized AI hardware manufacturers (NVIDIA, Google TPUs), data providers, academic institutions"
+    ],
+    "switching_costs": "high",
+    "impact": "Suppliers have moderate power due to specialized nature of AI infrastructure, but competition among cloud providers helps balance this power"
+  },
+  "bargaining_power_buyers": {
+    "power_level": "medium",
+    "buyer_concentration": "low",
+    "price_sensitivity": "high",
+    "impact": "Enterprise buyers have significant pricing power due to large contract sizes and ability to negotiate, while individual startups may face limited bargaining power"
+  },
+  "threat_of_substitutes": {
+    "threat_level": "medium",
+    "substitute_products": [
+      "Traditional software solutions, manual processes, open-source alternatives, low-code platforms, traditional consulting services"
+    ],
+    "switching_costs": "high",
+    "impact": "Substitutes pose moderate threat in cost-sensitive segments, but AI's superior performance and efficiency make switching difficult for value-driven customers"
+  },
+  "overall_assessment": {
+    "industry_attractiveness": "high",
+    "profit_potential": "above average",
+    "strategic_recommendations": [
+      "Focus on niche specialization to avoid direct competition, invest heavily in proprietary AI models and data assets, build strong ecosystem partnerships, emphasize customer lock-in through integrated solutions, and pursue strategic acquisitions of talent and technology"
+    ]
+  }
+}

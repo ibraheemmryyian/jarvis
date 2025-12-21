@@ -17,17 +17,8 @@ class ContextRecycler:
     """
     Manages context window to prevent overflow.
     Auto-summarizes and generates continuation prompts.
+    Uses registry.py as single source of truth for domains.
     """
-    
-    # Domain-specific context files
-    DOMAINS = {
-        "frontend": "frontend_context.md",
-        "backend": "backend_context.md", 
-        "database": "database_context.md",
-        "research": "research_context.md",
-        "decisions": "decisions_context.md",
-        "task_state": "task_state.md"
-    }
     
     def __init__(self, max_tokens: int = None, threshold: float = 0.75):
         self.max_tokens = max_tokens or MAX_CONTEXT_TOKENS
@@ -37,6 +28,27 @@ class ContextRecycler:
         self.task_objective = ""
         self.completed_steps = []
         self.pending_steps = []
+        
+        # Get domains from registry (single source of truth)
+        try:
+            from .registry import CONTEXT_DOMAINS
+            self.DOMAINS = {name: f"{name}_context.md" for name in CONTEXT_DOMAINS.keys()}
+        except ImportError:
+            # Fallback if registry not available
+            self.DOMAINS = {
+                "frontend": "frontend_context.md",
+                "backend": "backend_context.md", 
+                "database": "database_context.md",
+                "research": "research_context.md",
+                "decisions": "decisions_context.md",
+                "task_state": "task_state.md",
+                "architecture": "architecture_context.md",
+                "qa": "qa_context.md",
+                "codebase": "codebase_context.md",
+                "deployment": "deployment_context.md",
+                "content": "content_context.md",
+                "productivity": "productivity_context.md"
+            }
         
         # Initialize tokenizer (cl100k_base works for most models)
         try:

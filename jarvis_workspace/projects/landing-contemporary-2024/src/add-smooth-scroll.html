@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth Scroll Navigation</title>
+    <style>
+        /* Your existing CSS variables */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --dark-bg: #1a1a2e;
+            --light-text: #ffffff;
+            --dark-text: #333333;
+            --button-primary: #667eea;
+            --button-secondary: #f5576c;
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            
+            /* Spacing variables */
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 2rem;
+            --spacing-lg: 3rem;
+            --spacing-xl: 4rem;
+            
+            /* Typography */
+            --font-family: 'Inter', sans-serif;
+            --font-weight-light: 300;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            /* Border radius */
+            --border-radius: 8px;
+            
+            /* Box shadow */
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            line-height: 1.6;
+            min-height: 100vh;
+            scroll-behavior: smooth; /* Add smooth scrolling */
+        }
+
+        /* Navigation styles */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: var(--spacing-sm) 0;
+            box-shadow: var(--box-shadow);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 var(--spacing-md);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: var(--font-weight-bold);
+            color: var(--light-text);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: var(--spacing-md);
+        }
+
+        .nav-links a {
+            color: var(--light-text);
+            text-decoration: none;
+            font-weight: var(--font-weight-medium);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--border-radius);
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Section styles */
+        section {
+            min-height: 100vh;
+            padding: var(--spacing-xl) var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-lg);
+            text-align: center;
+        }
+
+        .section-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        /* Anchor link styles */
+        .anchor-link {
+            position: absolute;
+            top: -100px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: var(--spacing-sm);
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="#" class="logo">MyWebsite</a>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Sections with anchor links -->
+    <section id="home">
+        <div class="anchor-link" id="home"></div>
+        <h2 class="section-title">Home</h2>
+        <div class="section-content">
+            <p>Welcome to our website. This is the home section.</p>
+            <p>Click on the navigation links to see smooth scrolling in action.</p>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="anchor-link" id="about"></div>
+        <h2 class="section-title">About</h2>
+        <div class="section-content">
+            <p>This is the about section. Notice how smoothly we scroll to this section.</p>
+            <p>Try clicking on different navigation links to experience the smooth scrolling effect.</p>
+        </div>
+    </section>
+
+    <section id="services">
+        <div class="anchor-link" id="services"></div>
+        <h2 class="section-title">Services</h2>
+        <div class="section-content">
+            <p>Our services section. The smooth scrolling makes navigation delightful.</p>
+            <p>This effect works with both direct anchor links and JavaScript event listeners.</p>
+        </div>
+    </section>
+
+    <section id="portfolio">
+        <div class="anchor-link" id="portfolio"></div>
+        <h2 class="section-title">Portfolio</h2>
+        <div class="section-content">
+            <p>Our portfolio section. The anchor links and smooth scrolling work together seamlessly.</p>
+            <p>Try clicking on the navigation links to see how they smoothly scroll to each section.</p>
+        </div>
+    </section>
+
+    <section id="contact">
+        <div class="anchor-link" id="contact"></div>
+        <h2 class="section-title">Contact</h2>
+        <div class="section-content">
+            <p>Get in touch with us. The smooth scrolling navigation makes it easy to navigate.</p>
+            <p>This implementation provides a better user experience with anchor link functionality.</p>
+        </div>
+    </section>
+
+    <script>
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    // Calculate the offset to account for fixed navigation
+                    const navHeight = document.querySelector('nav').offsetHeight;
+                    const offsetPosition = targetElement.offsetTop - navHeight;
+                    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Add active link highlighting when scrolling
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-links a');
+            
+            let current = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                
+                // Check if we're in the current section
+                if (pageYOffset >= (sectionTop - 100)) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Add smooth scrolling for browser's built-in scroll behavior
+        document.body.style.scrollBehavior = 'smooth';
+    </script>
+</body>
+</html>

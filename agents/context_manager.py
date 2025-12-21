@@ -35,12 +35,52 @@ class ContextManager:
         return self.read("active_task")
     
     def read_for_agent(self, agent_type: str) -> str:
-        """Load context files relevant to a specific agent."""
+        """Load context files relevant to a specific agent using registry."""
+        # Try to get agent-specific domains from registry
+        try:
+            from .registry import registry
+            domains = registry.get_domains_for_agent(agent_type)
+            if domains:
+                combined = ""
+                for domain in domains:
+                    content = self._read_domain(domain)
+                    if content.strip():
+                        combined += f"\n\n---\n## {domain.upper()}\n{content}"
+                return self._truncate_if_needed(combined)
+        except:
+            pass
+        
+        # Fallback: comprehensive mapping for all agent categories
         files_to_load = {
+            # Frontend
+            "frontend_dev": ["active_task", "frontend", "decisions"],
+            "uiux": ["active_task", "frontend", "decisions"],
+            "seo": ["active_task", "frontend", "content"],
+            # Backend
+            "backend_dev": ["active_task", "backend", "database"],
+            "coder": ["active_task", "codebase_map", "decisions", "backend"],
+            "ai_ops": ["active_task", "backend", "research"],
+            "ai_infra": ["active_task", "backend", "deployment"],
+            # Architecture
+            "architect": ["active_task", "architecture", "decisions", "codebase_map"],
+            "product_manager": ["active_task", "decisions", "research"],
+            "strategy": ["active_task", "research", "decisions"],
+            "business_analyst": ["active_task", "research"],
+            # Research
+            "researcher": ["active_task", "research_notes", "research"],
+            "academic_research": ["active_task", "research"],
+            "academic_workflow": ["active_task", "research"],
+            # QA
+            "qa_agent": ["active_task", "qa", "codebase_map"],
+            "code_reviewer": ["active_task", "codebase_map", "decisions"],
+            "security_auditor": ["active_task", "codebase_map"],
+            # Ops
+            "ops": ["active_task", "deployment_log", "deployment"],
+            "git_agent": ["active_task", "codebase_map"],
+            "terminal": ["active_task"],
+            # Core
             "router": ["active_task"],
-            "research": ["active_task", "research_notes"],
-            "coder": ["active_task", "codebase_map", "decisions"],
-            "ops": ["active_task", "deployment_log"],
+            "autonomous": ["active_task", "task_state", "decisions"],
         }
         
         keys = files_to_load.get(agent_type, ["active_task"])
@@ -51,6 +91,15 @@ class ContextManager:
                 combined += f"\n\n---\n## {key.upper()}\n{content}"
         
         return self._truncate_if_needed(combined)
+    
+    def _read_domain(self, domain: str) -> str:
+        """Read a domain context file."""
+        from .config import CONTEXT_DIR
+        filepath = os.path.join(CONTEXT_DIR, f"{domain}_context.md")
+        if os.path.exists(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
     
     def _truncate_if_needed(self, text: str) -> str:
         """Rough truncation to stay under token limit (4 chars ≈ 1 token)."""

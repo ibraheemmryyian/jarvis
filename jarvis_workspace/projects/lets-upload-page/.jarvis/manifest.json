@@ -1,0 +1,10 @@
+{
+  "name": "lets-upload-page",
+  "slug": "lets-upload-page",
+  "stack": "vanilla",
+  "category": "frontend",
+  "created": "2025-12-21T01:24:10.562773",
+  "test_framework": null,
+  "entry_point": null,
+  "status": "initialized"
+}

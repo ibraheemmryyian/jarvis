@@ -1,152 +1,166 @@
 """
-Orchestrator v2 for Jarvis
-Full 40-agent coordination with intelligent routing and critique phases.
+Orchestrator v3 for Jarvis
+Full 54-agent coordination with intelligent routing, context segregation, and critique phases.
 
-Routes to:
-- Development: coder, code_reviewer, qa, terminal, git_agent
-- Research: researcher, brute_research, academic_research, synthesis
-- Business: business_analyst, pitch_deck, content_writer
-- Productivity: daily_briefing, memory, calendar, email, slack
-- QA: devils_advocate, security_auditor, visual_qa
-- Infrastructure: autonomous, recycler, project_manager
+Routes to 9 categories:
+- FRONTEND: frontend_dev, uiux, seo
+- BACKEND: backend_dev, coder, ai_ops, ai_infra
+- ARCHITECTURE: architect, product_manager, strategy, business_analyst
+- RESEARCH: researcher, brute_research, academic_research, academic_workflow
+- QA: qa_agent, code_reviewer, security_auditor, visual_qa, devils_advocate
+- OPS: ops, git_agent, github_agent, terminal
+- CONTENT: content_writer, pitch_deck, document_engine, seo_specialist
+- PRODUCTIVITY: email_agent, calendar_agent, slack_agent, daily_briefing
+- CORE: router, autonomous, recycler, memory
 """
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Callable, Any
 
-# Core routing
+# Core routing and context
 from .router import router
 from .context_manager import context
+from .registry import registry, AGENT_CATEGORIES, get_context_for_agent, save_context
 
-# Development agents
+# === FRONTEND ===
+from .frontend_dev import frontend_dev
+from .uiux import uiux
+from .seo import seo_specialist
+
+# === BACKEND ===
+from .backend_dev import backend_dev
 from .coder import coder
-from .code_reviewer import code_reviewer
+from .ai_ops import ai_ops
+from .ai_infra import ai_infra
+
+# === ARCHITECTURE ===
+from .architect import architect
+from .product_manager import product_manager
+from .strategy import strategy
+from .business_analyst import business_analyst
+
+# === RESEARCH ===
+from .research import researcher
+from .brute_research import brute_researcher
+from .academic_research import academic_research
+from .synthesis import deep_research_v2
+from .academic_workflow import academic_workflow
+from .research_publisher import research_publisher
+
+# === QA ===
 from .qa import qa_agent
-from .terminal import terminal
+from .code_reviewer import code_reviewer
+from .security_auditor import security_auditor
+from .visual_qa import visual_qa
+from .devils_advocate import devils_advocate
+
+# === OPS ===
+from .ops import ops
 from .git_agent import git_agent
+from .terminal import terminal
+
+# === CONTENT ===
+from .content_writer import content_writer
+from .pitch_deck import pitch_deck, pitch_deck_scorer
+from .document_engine import document_engine
+
+# === PRODUCTIVITY ===
+from .email_agent import email_agent
+from .calendar_agent import calendar_agent
+from .slack_agent import slack_agent
+from .daily_briefing import daily_briefing
+
+# === CORE ===
+from .autonomous import AutonomousExecutor
+from .recycler import recycler
+from .memory import memory
+from .prompt_refiner import prompt_refiner
 from .project_manager import project_manager
 from .design_creativity import design_creativity
 from .code_indexer import code_indexer
 
-# Research agents
-from .research import researcher
-from .brute_research import brute_researcher
-from .synthesis import deep_research_v2
-from .academic_research import academic_research
-
-# Business agents
-from .business_analyst import business_analyst
-from .pitch_deck import pitch_deck, pitch_deck_scorer
-from .content_writer import content_writer
-
-# Productivity agents
-from .daily_briefing import daily_briefing
-from .memory import memory
-from .email_agent import email_agent
-from .calendar_agent import calendar_agent
-from .slack_agent import slack_agent
-
-# QA / Review agents
-from .devils_advocate import devils_advocate
-from .security_auditor import security_auditor
-from .visual_qa import visual_qa
-
-# Infrastructure
-from .autonomous import AutonomousExecutor
-from .recycler import recycler
-from .prompt_refiner import prompt_refiner
-from .ops import ops
-
-# Document generation
-from .document_engine import document_engine
-
 
 class Orchestrator:
     """
-    The master brain that coordinates all 40 agents.
+    The master brain that coordinates all 54 agents.
+    Uses registry.py for categories and context routing.
     
     Features:
-    - Intelligent routing based on intent
+    - Intelligent routing via registry categories
     - Auto-prompt refinement
     - Critique phases (devil's advocate, security)
-    - Multi-step pipelines
+    - Multi-step pipelines with context segregation
     - Progress tracking
     """
-    
-    # Agent categories for routing
-    AGENT_CATEGORIES = {
-        "development": {
-            "agents": ["coder", "code_reviewer", "qa", "terminal", "git_agent", "project_manager"],
-            "keywords": ["build", "code", "create", "develop", "fix", "debug", "website", "app", "api", "script"]
-        },
-        "research": {
-            "agents": ["researcher", "brute_research", "academic_research", "synthesis"],
-            "keywords": ["research", "find", "search", "look up", "papers", "study", "investigate", "analyze data"]
-        },
-        "business": {
-            "agents": ["business_analyst", "pitch_deck", "content_writer"],
-            "keywords": ["pitch", "deck", "swot", "analysis", "market", "competitor", "business", "strategy", "content", "blog", "email", "social"]
-        },
-        "productivity": {
-            "agents": ["daily_briefing", "memory", "calendar", "email", "slack"],
-            "keywords": ["briefing", "schedule", "calendar", "email", "slack", "remind", "remember", "task"]
-        },
-        "ops": {
-            "agents": ["ops", "git_agent", "terminal"],
-            "keywords": ["deploy", "push", "commit", "run", "execute", "install", "server"]
-        },
-        "documents": {
-            "agents": ["document_engine"],
-            "keywords": ["document", "word", "excel", "pdf", "report", "proposal", "spreadsheet", "docx", "xlsx"]
-        }
-    }
     
     def __init__(self):
         self.execution_log = []
         self.autonomous = AutonomousExecutor()
         
-        # Direct agent references
+        # Direct agent references - ALL 42 AGENTS
         self.agents = {
-            # Development
-            "coder": coder,
-            "code_reviewer": code_reviewer,
-            "qa": qa_agent,
-            "terminal": terminal,
-            "git_agent": git_agent,
-            "project_manager": project_manager,
-            "design_creativity": design_creativity,
-            "code_indexer": code_indexer,
+            # === FRONTEND (3) ===
+            "frontend_dev": frontend_dev,
+            "uiux": uiux,
+            "seo": seo_specialist,
             
-            # Research
+            # === BACKEND (4) ===
+            "backend_dev": backend_dev,
+            "coder": coder,
+            "ai_ops": ai_ops,
+            "ai_infra": ai_infra,
+            
+            # === ARCHITECTURE (4) ===
+            "architect": architect,
+            "product_manager": product_manager,
+            "project_manager": project_manager,
+            "strategy": strategy,
+            "business_analyst": business_analyst,
+            
+            # === RESEARCH (6) ===
             "researcher": researcher,
             "brute_research": brute_researcher,
             "academic_research": academic_research,
+            "deep_research": deep_research_v2,
+            "academic_workflow": academic_workflow,
+            "research_publisher": research_publisher,
             
-            # Business
-            "business_analyst": business_analyst,
-            "pitch_deck": pitch_deck,
-            "content_writer": content_writer,
-            
-            # Productivity
-            "daily_briefing": daily_briefing,
-            "memory": memory,
-            "email_agent": email_agent,
-            "calendar_agent": calendar_agent,
-            "slack_agent": slack_agent,
-            
-            # QA
+            # === QA (5) ===
+            "code_reviewer": code_reviewer,
+            "qa": qa_agent,
             "devils_advocate": devils_advocate,
             "security_auditor": security_auditor,
             "visual_qa": visual_qa,
             
-            # Infrastructure
+            # === OPS (4) ===
             "ops": ops,
-            "recycler": recycler,
-            "prompt_refiner": prompt_refiner,
+            "git_agent": git_agent,
+            "terminal": terminal,
+            "code_indexer": code_indexer,
             
-            # Documents
+            # === CONTENT (4) ===
+            "content_writer": content_writer,
+            "pitch_deck": pitch_deck,
             "document_engine": document_engine,
+            "design_creativity": design_creativity,
+            
+            # === PRODUCTIVITY (4) ===
+            "email_agent": email_agent,
+            "calendar_agent": calendar_agent,
+            "slack_agent": slack_agent,
+            "daily_briefing": daily_briefing,
+            
+            # === CORE (6) ===
+            "router": router,
+            "recycler": recycler,
+            "memory": memory,
+            "prompt_refiner": prompt_refiner,
+            "autonomous": self.autonomous,
         }
+        
+        # Multi-agent discussion mode
+        self.team_mode = False
+        self.discussion_log = []
     
     def _log(self, message: str):
         """Log execution step."""

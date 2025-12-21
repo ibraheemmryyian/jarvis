@@ -34,7 +34,18 @@ AGENT_TEMPS = {
     "ops": 0.0,         # Deterministic deployment
 }
 
-# --- Token Limits (Nemotron 30B MoE with 2 experts) ---
-# 48GB RAM handles 100k context with 2 experts (reduced from 6)
-MAX_CONTEXT_TOKENS = 100000
-MAX_OUTPUT_TOKENS = 8000
+# --- Token Limits (Adaptive for Speed) ---
+# Smaller limits for simple tasks, larger for complex code generation
+MAX_CONTEXT_TOKENS = 132000
+
+# Adaptive output limits by task type
+TOKEN_LIMITS = {
+    "planning": 4096,      # Plans, routing, analysis (~20 min at 3 t/s)
+    "simple": 4096,        # Quick responses, summaries
+    "standard": 6144,      # Most code tasks (~30 min at 3 t/s)
+    "component": 10240,    # Full component generation (~55 min at 3 t/s)
+    "max": 16384,          # Only for explicit "create complete app" steps
+}
+
+# Default for backward compatibility
+MAX_OUTPUT_TOKENS = TOKEN_LIMITS["standard"]

@@ -1,0 +1,15 @@
+{
+  "id": "20251220_174425",
+  "timestamp": "2025-12-20T17:44:25.292796",
+  "objective": "Production test",
+  "iteration": 1,
+  "completed_steps": [
+    "Test step"
+  ],
+  "pending_steps": [
+    "More tests"
+  ],
+  "project_path": null,
+  "metadata": {},
+  "version": "1.0"
+}

@@ -78,29 +78,46 @@ TOOL_PROMPT = {
     "content": (
         "You are a Function Calling Agent. You output ONLY valid JSON. No explanations.\n"
         "Execute the user's request using these tools:\n\n"
-        "TOOLS:\n"
+        "CORE TOOLS:\n"
         "- search_web(query): Search internet\n"
         "- write_file(filename, content): Save file\n"
         "- read_file(filename): Read file\n"
         "- list_files(path): List directory\n"
-        "- deep_research(topic): Academic research\n"
         "- launch_app(app_name): Open app\n"
+        "- done(report): Signal task completion\n\n"
+        "BUILD TOOLS:\n"
+        "- autonomous_task(objective): BUILD COMPLEX PROJECTS (websites, apps, systems)\n"
         "- scaffold_project(project_name, stack): Create project ('frontend'/'python')\n"
-        "- autonomous_task(objective): BUILD COMPLEX PROJECTS (websites, apps)\n"
+        "- frontend_task(description): UI components, pages, CSS, React\n"
+        "- backend_task(description): APIs, databases, auth, services\n"
+        "- ai_task(description): LLM integration, RAG, AI infrastructure\n\n"
+        "RESEARCH TOOLS:\n"
+        "- deep_research(topic): Academic research across sources\n"
+        "- research_paper(topic, style, template): Generate academic paper\n"
+        "  - style: 'apa', 'mla', 'chicago', 'ieee', 'harvard', 'vancouver'\n"
+        "  - template: 'imrad', 'thesis', 'review', 'case_study', 'white_paper', 'conference'\n\n"
+        "BUSINESS TOOLS:\n"
         "- business_analysis(company, description, industry): Full business analysis\n"
         "- generate_pitch_deck(company, description, industry): Create pitch deck\n"
-        "- done(report): Signal task completion\n\n"
+        "- strategy_task(description): GTM, market analysis, competitive intel\n\n"
+        "PROJECT MANAGEMENT TOOLS:\n"
+        "- new_project(name, template): Create new project ('vanilla', 'react', 'nextjs')\n"
+        "- list_projects(): Show all projects in workspace\n"
+        "- open_project(name): Open existing project for editing\n"
+        "- deploy_project(name, platform): Deploy to 'vercel' or 'netlify'\n\n"
         "OUTPUT FORMAT (STRICT):\n"
-        '{"tool": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}\n\n'
-        "EXAMPLES:\n"
-        '{"tool": "autonomous_task", "args": {"objective": "Build a React dashboard with dark theme"}}\n'
-        '{"tool": "write_file", "args": {"filename": "hello.py", "content": "print(\'hi\')"}}\n'
-        '{"tool": "read_file", "args": {"filename": "README.md"}}\n'
-        '{"tool": "done", "args": {"report": "Task completed successfully"}}\n\n'
-        "STRATEGY:\n"
-        "1. For BUILDING (website, app, dashboard): use autonomous_task\n"
-        "2. For SIMPLE tasks: use individual tools\n"
-        "3. When finished: use done(report)"
+        '{"tool": "tool_name", "args": {"arg1": "value1"}}\n\n'
+        "ROUTING RULES:\n"
+        "- For COMPLEX BUILDS: autonomous_task (it handles everything)\n"
+        "- For NEW PROJECTS: new_project first, then autonomous_task\n"
+        "- For FRONTEND only: frontend_task\n"
+        "- For BACKEND only: backend_task\n"
+        "- For RESEARCH PAPERS: research_paper\n"
+        "- For single file: write_file\n\n"
+        "CRITICAL:\n"
+        "- autonomous_task is EXCLUSIVE: Output ONLY that one tool call\n"
+        "- Output ONE tool per response\n"
+        "- NEVER invent data - say 'TBD' if unknown"
     )
 }
 
@@ -576,11 +593,17 @@ class JarvisTools:
     
     @staticmethod
     def generate_pitch_deck(company, description, industry="tech"):
-        """Create investor-ready pitch deck with reveal.js HTML."""
+        """Create investor-ready pitch deck with reveal.js HTML and Chart.js graphs."""
         try:
             from agents import pitch_deck, pitch_deck_scorer
             
-            result = pitch_deck.generate(company, description, industry)
+            # Use data-driven generation with existing business analysis
+            result = pitch_deck.generate(
+                company=company, 
+                description=description, 
+                industry=industry,
+                use_existing_data=True  # Load from SWOT, BMC, market_size, etc.
+            )
             
             # Score the deck
             score_result = pitch_deck_scorer.score(result["slides"])
@@ -590,12 +613,14 @@ class JarvisTools:
             output += f"Slides: {result['slide_count']}\n"
             output += f"Theme: {result['theme']}\n"
             output += f"Location: {result['deck_path']}\n"
-            output += f"HTML File: {result['html_file']}\n\n"
+            output += f"HTML File: {result['html_file']}\n"
+            output += f"Data Sources: {', '.join(result.get('data_sources', []))}\n\n"
             output += f"## Quality Score\n{summary}"
             
             return output
         except Exception as e:
-            return f"Pitch deck error: {e}"
+            import traceback
+            return f"Pitch deck error: {e}\n{traceback.format_exc()}"
     
     @staticmethod
     def score_pitch_deck(slides_json):
@@ -615,6 +640,288 @@ class JarvisTools:
             return summary
         except Exception as e:
             return f"Scoring error: {e}"
+    
+    # === NEW SPECIALIST TOOLS ===
+    
+    @staticmethod
+    def frontend_task(description):
+        """Execute frontend-specific task using frontend_dev agent."""
+        try:
+            from agents.frontend_dev import frontend_dev
+            from agents.registry import save_context
+            
+            result = frontend_dev.run(description)
+            
+            # Save to frontend context
+            save_context("frontend", f"Task: {description}\nResult: {result[:500]}", "frontend_dev")
+            
+            return result
+        except Exception as e:
+            return f"Frontend task error: {e}"
+    
+    @staticmethod
+    def backend_task(description):
+        """Execute backend-specific task using backend_dev agent."""
+        try:
+            from agents.backend_dev import backend_dev
+            from agents.registry import save_context
+            
+            result = backend_dev.run(description)
+            
+            # Save to backend context
+            save_context("backend", f"Task: {description}\nResult: {result[:500]}", "backend_dev")
+            
+            return result
+        except Exception as e:
+            return f"Backend task error: {e}"
+    
+    @staticmethod
+    def ai_task(description):
+        """Execute AI/ML task using ai_ops and ai_infra agents."""
+        try:
+            from agents.ai_ops import ai_ops
+            from agents.registry import save_context
+            
+            result = ai_ops.run(description)
+            
+            save_context("backend", f"AI Task: {description}\nResult: {result[:500]}", "ai_ops")
+            
+            return result
+        except Exception as e:
+            return f"AI task error: {e}"
+    
+    @staticmethod
+    def research_paper(topic, style="apa", template="imrad"):
+        """Generate academic research paper with proper citations."""
+        try:
+            from agents.research_publisher import research_publisher
+            from agents.registry import save_context
+            
+            # Get template
+            paper_template = research_publisher.get_paper_template(template)
+            
+            # Generate paper content
+            paper = research_publisher.generate_research_paper(topic, template, style)
+            
+            save_context("research", f"Paper: {topic}\nStyle: {style}\nTemplate: {template}", "research_publisher")
+            
+            return paper
+        except Exception as e:
+            return f"Research paper error: {e}"
+    
+    @staticmethod
+    def strategy_task(description):
+        """Execute strategy task using strategy agent."""
+        try:
+            from agents.strategy import strategy
+            from agents.registry import save_context
+            
+            result = strategy.run(description)
+            
+            save_context("research", f"Strategy: {description}\nResult: {result[:500]}", "strategy")
+            
+            return result
+        except Exception as e:
+            return f"Strategy task error: {e}"
+    
+    @staticmethod
+    def new_project(name, template="vanilla"):
+        """Create a new project with proper structure."""
+        try:
+            from agents.project_builder import project_builder
+            
+            path = project_builder.create_project(name, template=template)
+            files = project_builder.list_files()
+            
+            return f"Project '{name}' created at:\n{path}\n\nFiles created:\n" + "\n".join(f"  - {f}" for f in files)
+        except Exception as e:
+            return f"Project creation error: {e}"
+    
+    @staticmethod
+    def list_projects():
+        """List all projects in workspace."""
+        try:
+            projects_dir = os.path.join(WORKSPACE_DIR, "projects")
+            if not os.path.exists(projects_dir):
+                return "No projects yet."
+            
+            projects = [d for d in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, d))]
+            
+            if not projects:
+                return "No projects yet."
+            
+            return "Projects:\n" + "\n".join(f"  - {p}" for p in projects)
+        except Exception as e:
+            return f"List projects error: {e}"
+    
+    @staticmethod
+    def open_project(name):
+        """Open an existing project for editing."""
+        try:
+            from agents.project_builder import project_builder
+            
+            project_path = os.path.join(WORKSPACE_DIR, "projects", name)
+            if not os.path.exists(project_path):
+                return f"Project '{name}' not found."
+            
+            project_builder.project_path = project_path
+            project_builder.current_project = name
+            
+            files = project_builder.list_files()
+            context = project_builder.get_project_context()
+            
+            return f"Opened project: {name}\n\nFiles:\n" + "\n".join(f"  - {f}" for f in files) + f"\n\n{context[:1000]}"
+        except Exception as e:
+            return f"Open project error: {e}"
+    
+    @staticmethod
+    def deploy_project(name, platform="vercel"):
+        """Deploy project to Vercel or Netlify."""
+        try:
+            import subprocess
+            
+            project_path = os.path.join(WORKSPACE_DIR, "projects", name)
+            if not os.path.exists(project_path):
+                return f"Project '{name}' not found."
+            
+            if platform.lower() == "vercel":
+                # Check if Vercel CLI is installed
+                try:
+                    result = subprocess.run(["vercel", "--version"], capture_output=True, text=True, cwd=project_path)
+                    if result.returncode != 0:
+                        return "Vercel CLI not installed. Run: npm i -g vercel"
+                except FileNotFoundError:
+                    return "Vercel CLI not installed. Run: npm i -g vercel"
+                
+                # Deploy
+                result = subprocess.run(["vercel", "--prod", "--yes"], capture_output=True, text=True, cwd=project_path)
+                
+                if result.returncode == 0:
+                    return f"Deployed to Vercel!\n\n{result.stdout}"
+                else:
+                    return f"Deploy failed:\n{result.stderr}"
+            
+            elif platform.lower() == "netlify":
+                try:
+                    result = subprocess.run(["netlify", "deploy", "--prod"], capture_output=True, text=True, cwd=project_path)
+                    
+                    if result.returncode == 0:
+                        return f"Deployed to Netlify!\n\n{result.stdout}"
+                    else:
+                        return f"Deploy failed:\n{result.stderr}"
+                except FileNotFoundError:
+                    return "Netlify CLI not installed. Run: npm i -g netlify-cli"
+            
+            else:
+                return f"Unknown platform: {platform}. Use 'vercel' or 'netlify'."
+        except Exception as e:
+            return f"Deploy error: {e}"
+    
+    @staticmethod
+    def academic_paper(topic, paper_type="imrad", review=True, plagiarism_check=True):
+        """
+        Write a complete academic paper A-to-Z with review and plagiarism check.
+        
+        Pipeline: Research → Outline → Draft → Verify → Review → Revise → Finalize
+        
+        Args:
+            topic: Research topic
+            paper_type: 'imrad', 'thesis', 'review', 'case_study', 'white_paper', 'conference'
+            review: Enable peer review scoring
+            plagiarism_check: Enable similarity check
+        """
+        try:
+            from agents.academic_workflow import academic_workflow
+            from agents.registry import save_context
+            
+            # Run full paper pipeline
+            result = academic_workflow.write_paper(topic, paper_type)
+            
+            output = f"# Academic Paper: {topic}\n\n"
+            output += f"**Type:** {paper_type}\n"
+            output += f"**Saved to:** {result.get('saved_to', 'N/A')}\n\n"
+            
+            # Show verification results
+            verification = result.get('stages', {}).get('verification', {})
+            output += f"## Anti-Hallucination Check\n"
+            output += f"- Risk Level: {verification.get('hallucination_risk', 'Unknown')}\n"
+            output += f"- Unverified Claims: {len(verification.get('unverified', []))}\n"
+            
+            # Show review scores
+            review_data = result.get('stages', {}).get('review', {})
+            if review_data.get('scores'):
+                output += f"\n## Peer Review Scores\n"
+                for k, v in review_data['scores'].items():
+                    output += f"- {k.title()}: {v}/10\n"
+                output += f"\n**Verdict:** {review_data.get('verdict', 'N/A')}\n"
+            
+            if review_data.get('major_revisions'):
+                output += f"\n## Revisions Made\n"
+                for rev in review_data['major_revisions'][:3]:
+                    output += f"- {rev}\n"
+            
+            save_context("research", f"Paper: {topic}\nType: {paper_type}\nVerdict: {review_data.get('verdict', 'N/A')}", "academic_workflow")
+            
+            return output
+        except Exception as e:
+            import traceback
+            return f"Academic paper error: {e}\n{traceback.format_exc()}"
+    
+    @staticmethod
+    def review_paper(content):
+        """Academic peer review of paper content."""
+        try:
+            from agents.academic_workflow import academic_workflow
+            import json
+            
+            review = academic_workflow.review_paper(content)
+            return json.dumps(review, indent=2)
+        except Exception as e:
+            return f"Review error: {e}"
+    
+    @staticmethod
+    def plagiarism_check(content):
+        """Check content for potential plagiarism."""
+        try:
+            from agents.academic_workflow import academic_workflow
+            import json
+            
+            result = academic_workflow.check_plagiarism(content)
+            
+            output = f"# Plagiarism Check\n\n"
+            output += f"**Similarity Score:** {result.get('similarity_score', 0):.1f}%\n"
+            output += f"**Recommendation:** {result.get('recommendation', 'N/A')}\n\n"
+            
+            if result.get('flagged_passages'):
+                output += "## Flagged Passages\n"
+                for p in result['flagged_passages'][:5]:
+                    output += f"- {p['similarity']}% similar to: {p['similar_to']}\n"
+            
+            return output
+        except Exception as e:
+            return f"Plagiarism check error: {e}"
+    
+    @staticmethod
+    def verify_claim(claim):
+        """Verify a single claim against academic sources (anti-hallucination)."""
+        try:
+            from agents.academic_workflow import academic_workflow
+            import json
+            
+            result = academic_workflow.verify_single_claim(claim)
+            
+            output = f"# Claim Verification\n\n"
+            output += f"**Claim:** {claim[:100]}...\n"
+            output += f"**Verdict:** {result.get('verdict', 'UNKNOWN')}\n"
+            output += f"**Confidence:** {result.get('confidence', 0) * 100:.0f}%\n"
+            output += f"**Reasoning:** {result.get('reasoning', 'N/A')}\n"
+            
+            if result.get('suggested_revision'):
+                output += f"\n**Suggested Revision:** {result['suggested_revision']}\n"
+            
+            return output
+        except Exception as e:
+            return f"Verification error: {e}"
 
 class JarvisUI:
     def __init__(self, root):
@@ -634,6 +941,21 @@ class JarvisUI:
         self.current_chat_file = None
         self.chat_history = [CHAT_PROMPT]  # Initialize chat history
         
+        # Theme toggle (classic = green terminal, modern = sleek dark)
+        self.is_modern_theme = False
+        self.themes = {
+            "classic": {
+                "bg": "#000000", "bg_card": "#111111", "bg_input": "#1a1a1a",
+                "fg": "#00ff41", "fg_muted": "#666666", "accent": "#003300",
+                "danger": "#330000", "danger_fg": "#ff4444"
+            },
+            "modern": {
+                "bg": "#0a0a0f", "bg_card": "#12121a", "bg_input": "#1a1a25",
+                "fg": "#f8fafc", "fg_muted": "#64748b", "accent": "#6366f1",
+                "danger": "#7f1d1d", "danger_fg": "#fca5a5"
+            }
+        }
+        
         self.setup_ui()
         self.log_system("Initializing Sentient Suite...")
         
@@ -650,9 +972,19 @@ class JarvisUI:
         self.root.after(100, self.process_queue)
 
     def setup_ui(self):
-        """Build the complete UI layout."""
-        # Main container
-        main_frame = tk.Frame(self.root, bg="#000000")
+        """Build UI - dispatches to classic or modern based on theme."""
+        # Main container (will be destroyed and rebuilt on toggle)
+        self.main_container = tk.Frame(self.root, bg="#000000")
+        self.main_container.pack(fill=tk.BOTH, expand=True)
+        
+        if self.is_modern_theme:
+            self._build_modern_ui()
+        else:
+            self._build_classic_ui()
+    
+    def _build_classic_ui(self):
+        """Build classic terminal-style UI."""
+        main_frame = tk.Frame(self.main_container, bg="#000000")
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Sidebar for chat history
@@ -727,6 +1059,12 @@ class JarvisUI:
                   font=("Consolas", 10, "bold"), borderwidth=0,
                   command=self.clear_memory).pack(side=tk.RIGHT, ipady=8, ipadx=15)
         
+        # Theme toggle button
+        self.theme_btn = tk.Button(control_frame, text="🎨 MODERN", bg="#1a1a3a", fg="#8888ff",
+                  font=("Consolas", 10, "bold"), borderwidth=0,
+                  command=self.toggle_theme)
+        self.theme_btn.pack(side=tk.RIGHT, padx=5, ipady=8, ipadx=15)
+        
         tk.Button(control_frame, text="STOP", bg="#660000", fg="#ff0000",
                   font=("Consolas", 10, "bold"), borderwidth=0,
                   command=self.stop_action).pack(side=tk.RIGHT, padx=5, ipady=8, ipadx=15)
@@ -744,6 +1082,160 @@ class JarvisUI:
         self.system_log.insert(tk.END, f"[{timestamp}] {msg}\n")
         self.system_log.see(tk.END)
         self.system_log.config(state='disabled')
+    
+    def toggle_theme(self):
+        """Toggle between classic terminal and modern chat bubble UI."""
+        self.is_modern_theme = not self.is_modern_theme
+        
+        # Save current chat history
+        saved_history = self.chat_history.copy()
+        
+        # Destroy current UI
+        self.main_container.destroy()
+        
+        # Rebuild with new layout
+        self.main_container = tk.Frame(self.root, 
+            bg=self.themes["modern"]["bg"] if self.is_modern_theme else self.themes["classic"]["bg"])
+        self.main_container.pack(fill=tk.BOTH, expand=True)
+        
+        if self.is_modern_theme:
+            self._build_modern_ui()
+        else:
+            self._build_classic_ui()
+        
+        # Restore chat history
+        self.chat_history = saved_history
+        self.log_system(f"Switched to {'Modern' if self.is_modern_theme else 'Classic'} UI")
+    
+    def _build_modern_ui(self):
+        """Build modern chat-style UI with bubbles and sleek design."""
+        theme = self.themes["modern"]
+        self.root.configure(bg=theme["bg"])
+        
+        # Main layout
+        main_frame = tk.Frame(self.main_container, bg=theme["bg"])
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        
+        # === LEFT SIDEBAR ===
+        sidebar = tk.Frame(main_frame, bg=theme["bg_card"], width=260)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 15))
+        sidebar.pack_propagate(False)
+        
+        # Logo
+        tk.Label(sidebar, text="J.A.R.V.I.S", bg=theme["bg_card"], fg=theme["accent"],
+                font=("Segoe UI", 22, "bold")).pack(pady=(20, 5), padx=15, anchor="w")
+        
+        # Get actual agent count from registry
+        try:
+            from agents.registry import registry
+            agent_count = registry.get_status()["registered_agents"]
+        except:
+            agent_count = 41
+        
+        tk.Label(sidebar, text=f"{agent_count} Agents Ready", bg=theme["bg_card"], fg=theme["fg_muted"],
+                font=("Segoe UI", 9)).pack(padx=15, anchor="w")
+        
+        # New chat button (modern style)
+        new_btn = tk.Button(sidebar, text="✨  New Chat", bg=theme["accent"], fg="#ffffff",
+                           font=("Segoe UI", 11, "bold"), borderwidth=0, cursor="hand2",
+                           command=self.new_chat, activebackground="#7c3aed")
+        new_btn.pack(fill=tk.X, padx=15, pady=20, ipady=12)
+        
+        # Sessions label
+        tk.Label(sidebar, text="SESSIONS", bg=theme["bg_card"], fg=theme["fg_muted"],
+                font=("Segoe UI", 9, "bold")).pack(padx=15, anchor="w", pady=(10, 5))
+        
+        # Chat list
+        self.chat_listbox = tk.Listbox(sidebar, bg=theme["bg"], fg=theme["fg_muted"],
+                                       font=("Segoe UI", 10), selectbackground=theme["accent"],
+                                       selectforeground="#ffffff", borderwidth=0,
+                                       highlightthickness=0, activestyle="none")
+        self.chat_listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.chat_listbox.bind("<<ListboxSelect>>", self.select_chat)
+        
+        # Theme toggle at bottom
+        self.theme_btn = tk.Button(sidebar, text="🖥️  Switch to Classic", 
+                                  bg=theme["bg"], fg=theme["fg_muted"],
+                                  font=("Segoe UI", 10), borderwidth=0, cursor="hand2",
+                                  command=self.toggle_theme)
+        self.theme_btn.pack(fill=tk.X, padx=15, pady=15, ipady=8)
+        
+        # === MAIN CHAT AREA ===
+        chat_container = tk.Frame(main_frame, bg=theme["bg"])
+        chat_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Header
+        header = tk.Frame(chat_container, bg=theme["bg"])
+        header.pack(fill=tk.X, pady=(0, 15))
+        
+        self.status_label = tk.Label(header, text="● Online", bg=theme["bg"],
+                                    fg="#10b981", font=("Segoe UI", 10))
+        self.status_label.pack(side=tk.RIGHT)
+        
+        # Chat area (scrollable)
+        chat_frame = tk.Frame(chat_container, bg=theme["bg"])
+        chat_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.chat_area = scrolledtext.ScrolledText(chat_frame, wrap=tk.WORD,
+                                                   bg=theme["bg"], fg=theme["fg"],
+                                                   font=("Segoe UI", 11),
+                                                   insertbackground=theme["fg"],
+                                                   borderwidth=0, relief="flat",
+                                                   padx=10, pady=10)
+        self.chat_area.pack(fill=tk.BOTH, expand=True)
+        self.chat_area.config(state='disabled')
+        
+        # Configure tags for chat bubbles
+        self.chat_area.tag_configure("user", background=theme["accent"], foreground="#ffffff",
+                                    lmargin1=100, rmargin=20, spacing1=10, spacing3=10)
+        self.chat_area.tag_configure("jarvis", background=theme["bg_card"], foreground=theme["fg"],
+                                    lmargin1=20, rmargin=100, spacing1=10, spacing3=10)
+        
+        # Input area with rounded look
+        input_frame = tk.Frame(chat_container, bg=theme["bg_card"])
+        input_frame.pack(fill=tk.X, pady=(15, 0))
+        
+        self.msg_entry = tk.Entry(input_frame, bg=theme["bg_card"], fg=theme["fg"],
+                                 font=("Segoe UI", 12), insertbackground=theme["fg"],
+                                 borderwidth=0, relief="flat")
+        self.msg_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, ipady=15, ipadx=15)
+        self.msg_entry.bind("<Return>", self.send_text)
+        
+        send_btn = tk.Button(input_frame, text="Send  ➤", bg=theme["accent"], fg="#ffffff",
+                            font=("Segoe UI", 11, "bold"), borderwidth=0, cursor="hand2",
+                            command=self.send_text, activebackground="#7c3aed")
+        send_btn.pack(side=tk.RIGHT, ipadx=20, ipady=12)
+        
+        # Quick actions
+        actions_frame = tk.Frame(chat_container, bg=theme["bg"])
+        actions_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        for text, cmd in [("📝 Paper", lambda: self.msg_entry.insert(0, "Write academic paper: ")),
+                         ("🔬 Research", lambda: self.msg_entry.insert(0, "Research: ")),
+                         ("🚀 Build", lambda: self.msg_entry.insert(0, "Build me: "))]:
+            tk.Button(actions_frame, text=text, bg=theme["bg_card"], fg=theme["fg_muted"],
+                     font=("Segoe UI", 9), borderwidth=0, cursor="hand2",
+                     command=cmd).pack(side=tk.LEFT, padx=(0, 8), ipadx=12, ipady=6)
+        
+        # System log (smaller, at bottom)
+        self.system_log = tk.Text(chat_container, height=2, bg=theme["bg"], fg=theme["fg_muted"],
+                                 font=("Segoe UI", 8), borderwidth=0, relief="flat")
+        self.system_log.pack(fill=tk.X, pady=(10, 0))
+        self.system_log.config(state='disabled')
+        
+        # Control buttons (modern style)
+        control_frame = tk.Frame(chat_container, bg=theme["bg"])
+        control_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        self.btn_toggle = tk.Button(control_frame, text="🎤 Start Listening",
+                                   bg=theme["bg_card"], fg=theme["fg_muted"],
+                                   font=("Segoe UI", 9), borderwidth=0,
+                                   command=self.toggle_listening, state="disabled")
+        self.btn_toggle.pack(side=tk.LEFT, ipadx=12, ipady=6)
+        
+        tk.Button(control_frame, text="⏹️ Stop", bg=theme["danger"], fg=theme["danger_fg"],
+                 font=("Segoe UI", 9), borderwidth=0,
+                 command=self.stop_action).pack(side=tk.RIGHT, ipadx=12, ipady=6)
         
     def toggle_busy(self, state):
         """Toggle busy state."""
@@ -860,14 +1352,30 @@ class JarvisUI:
         self.log_system("Engineer loop started...")
         
         # Power Mode: Unlimited Tokens (-1) for massive reports
-        payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": -1}
+        payload = {"messages": self.chat_history, "temperature": 0.0, "max_tokens": -1, "stream": True}
         
         try:
-            response = requests.post(LM_STUDIO_URL, json=payload)
-            if response.status_code != 200: 
-                self.log_system(f"API Error: {response.status_code}")
-                return
-            content = response.json()['choices'][0]['message']['content']
+            self.log_system(f"Sending Engineer Request... (Context: {len(str(payload))} chars)")
+            
+            content = ""
+            with requests.post(LM_STUDIO_URL, json=payload, stream=True) as response:
+                if response.status_code != 200: 
+                    self.log_system(f"API Error: {response.status_code}")
+                    return
+                
+                self.log_system("Stream Started (Processing Prompt Done)...")
+                
+                for line in response.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8').strip()
+                        if decoded.startswith("data: "):
+                            json_str = decoded[6:]
+                            if json_str == "[DONE]": break
+                            try:
+                                chunk = json.loads(json_str)
+                                delta = chunk['choices'][0]['delta'].get('content', '')
+                                content += delta
+                            except: pass
             
             # Display the response
             self.msg_queue.put(("jarvis", content))
@@ -1018,6 +1526,7 @@ class JarvisUI:
         sentence_buffer = ""
         
         try:
+            self.log_system(f"Sending Chat Request... (Context: {len(str(payload))} chars)")
             # We use stream=True and iterate lines
             with requests.post(LM_STUDIO_URL, json=payload, stream=True) as response:
                 if response.status_code != 200: 
@@ -1129,6 +1638,18 @@ class JarvisUI:
         self.stop_flag = False
         
         self.chat_history.append({"role": "user", "content": user_text})
+        
+        # Step 0: Refine the prompt (handles resume/continue detection)
+        from agents import prompt_refiner
+        refined_result = prompt_refiner.refine(user_text)
+        refined_text = refined_result.get("refined_prompt", user_text)
+        
+        # If prompt was refined, use the refined version
+        if refined_text != user_text:
+            self.log_system(f"Refined prompt: {refined_text[:100]}...")
+            user_text = refined_text
+            # Update the chat history with refined prompt
+            self.chat_history[-1] = {"role": "user", "content": user_text}
         
         # Step 1: The Router - Is this a task?
         is_task = self.check_intent(user_text)

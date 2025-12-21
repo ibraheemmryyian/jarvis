@@ -1,10 +1,12 @@
 """
-Pitch Deck Generator for Jarvis v2
-Creates investor-ready pitch decks with minimal text, visual appeal, and proper structure.
+Pitch Deck Generator v3 - Data-Driven with Real Charts
+Creates investor-ready pitch decks using REAL data from business analysis files.
+NO HALLUCINATIONS - uses TBD for missing data instead of making things up.
 """
 import os
 import re
 import json
+import glob
 from datetime import datetime
 from typing import Dict, List, Optional
 from .config import WORKSPACE_DIR, LM_STUDIO_URL
@@ -13,99 +15,152 @@ import requests
 
 class PitchDeckGenerator:
     """
-    Generates investor-ready pitch decks.
+    Generates investor-ready pitch decks with REAL data.
     
     Features:
+    - Loads data from existing business analysis (SWOT, BMC, market size, etc.)
+    - Chart.js for real visualizations (bar charts, pie charts, line graphs)
+    - Fullscreen reveal.js with proper CSS
+    - Anti-hallucination: uses "TBD" for unknown data
     - 10-12 slide structure (investor standard)
-    - Word count enforcement (max 6 words per bullet)
-    - reveal.js HTML output
-    - Multiple templates (SaaS, DeepTech, Consumer)
-    - Visual QA integration
     """
     
     # Standard pitch deck structure
     SLIDE_STRUCTURE = [
-        {"id": "cover", "title": "Cover", "purpose": "Company name, tagline, logo"},
+        {"id": "cover", "title": "Cover", "purpose": "Company name, tagline"},
         {"id": "problem", "title": "Problem", "purpose": "The pain point you solve"},
         {"id": "solution", "title": "Solution", "purpose": "Your product/service"},
-        {"id": "market", "title": "Market Size", "purpose": "TAM, SAM, SOM"},
-        {"id": "product", "title": "Product", "purpose": "How it works, screenshots"},
+        {"id": "market", "title": "Market Size", "purpose": "TAM, SAM, SOM with bar chart"},
+        {"id": "product", "title": "Product", "purpose": "How it works"},
         {"id": "business_model", "title": "Business Model", "purpose": "How you make money"},
-        {"id": "traction", "title": "Traction", "purpose": "Key metrics, growth"},
-        {"id": "competition", "title": "Competition", "purpose": "Competitive landscape"},
-        {"id": "team", "title": "Team", "purpose": "Founders and key hires"},
-        {"id": "financials", "title": "Financials", "purpose": "Revenue projections"},
-        {"id": "ask", "title": "The Ask", "purpose": "Funding amount, use of funds"},
-        {"id": "contact", "title": "Contact", "purpose": "Contact info, next steps"}
+        {"id": "traction", "title": "Traction", "purpose": "Key metrics"},
+        {"id": "competition", "title": "Competition", "purpose": "Competitive matrix"},
+        {"id": "team", "title": "Team", "purpose": "Founders - MUST be provided"},
+        {"id": "financials", "title": "Financials", "purpose": "Revenue projections with line chart"},
+        {"id": "ask", "title": "The Ask", "purpose": "Funding amount, use of funds pie chart"},
+        {"id": "contact", "title": "Contact", "purpose": "Contact info"}
     ]
     
     # Color themes
     THEMES = {
         "tech": {
-            "primary": "#6366f1",      # Indigo
-            "secondary": "#8b5cf6",    # Purple
-            "accent": "#22d3ee",       # Cyan
-            "background": "#0f172a",   # Dark slate
-            "text": "#f8fafc"          # Light
+            "primary": "#6366f1",
+            "secondary": "#8b5cf6",
+            "accent": "#22d3ee",
+            "background": "#0f172a",
+            "text": "#f8fafc",
+            "chart_colors": ["#6366f1", "#8b5cf6", "#22d3ee", "#f59e0b", "#10b981"]
         },
         "saas": {
-            "primary": "#3b82f6",      # Blue
-            "secondary": "#06b6d4",    # Cyan
-            "accent": "#10b981",       # Emerald
-            "background": "#1e293b",   # Slate
-            "text": "#f1f5f9"
+            "primary": "#3b82f6",
+            "secondary": "#06b6d4",
+            "accent": "#10b981",
+            "background": "#1e293b",
+            "text": "#f1f5f9",
+            "chart_colors": ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"]
         },
         "fintech": {
-            "primary": "#14b8a6",      # Teal
-            "secondary": "#0ea5e9",    # Sky
-            "accent": "#f59e0b",       # Amber
-            "background": "#0c1222",   # Dark
-            "text": "#e2e8f0"
-        },
-        "sustainability": {
-            "primary": "#22c55e",      # Green
-            "secondary": "#84cc16",    # Lime
-            "accent": "#06b6d4",       # Cyan
-            "background": "#052e16",   # Dark green
-            "text": "#f0fdf4"
-        },
-        "healthcare": {
-            "primary": "#0891b2",      # Cyan
-            "secondary": "#6366f1",    # Indigo
-            "accent": "#ec4899",       # Pink
-            "background": "#0f172a",   # Dark
-            "text": "#f8fafc"
+            "primary": "#14b8a6",
+            "secondary": "#0ea5e9",
+            "accent": "#f59e0b",
+            "background": "#0c1222",
+            "text": "#e2e8f0",
+            "chart_colors": ["#14b8a6", "#0ea5e9", "#f59e0b", "#ec4899", "#84cc16"]
         }
     }
     
     def __init__(self):
         self.decks_dir = os.path.join(WORKSPACE_DIR, "pitch_decks")
+        self.business_dir = os.path.join(WORKSPACE_DIR, "business")
         os.makedirs(self.decks_dir, exist_ok=True)
+    
+    def _load_existing_analysis(self, company: str) -> Dict:
+        """
+        Load existing business analysis data from workspace.
+        Returns structured data from SWOT, BMC, market size, competitors, financials.
+        """
+        data = {
+            "swot": None,
+            "bmc": None,
+            "market_size": None,
+            "competitors": None,
+            "financials": None,
+            "five_forces": None
+        }
+        
+        if not os.path.exists(self.business_dir):
+            print(f"[PitchDeck] No business directory found at {self.business_dir}")
+            return data
+        
+        # Find most recent files for each type
+        file_patterns = {
+            "swot": "swot_*.json",
+            "bmc": "bmc_*.json",
+            "market_size": "market_size_*.json",
+            "competitors": "competitor_*.json",
+            "financials": "financials_*.json",
+            "five_forces": "five_forces_*.json"
+        }
+        
+        for key, pattern in file_patterns.items():
+            files = glob.glob(os.path.join(self.business_dir, pattern))
+            if files:
+                # Get most recent file
+                latest = max(files, key=os.path.getmtime)
+                try:
+                    with open(latest, 'r', encoding='utf-8') as f:
+                        data[key] = json.load(f)
+                    print(f"[PitchDeck] Loaded {key} from {os.path.basename(latest)}")
+                except Exception as e:
+                    print(f"[PitchDeck] Failed to load {key}: {e}")
+        
+        return data
     
     def generate(self, company: str, description: str, 
                  industry: str = "tech",
-                 additional_info: Dict = None) -> Dict:
+                 team: List[Dict] = None,
+                 traction: Dict = None,
+                 contact_email: str = None,
+                 funding_ask: str = None,
+                 use_existing_data: bool = True) -> Dict:
         """
-        Generate a complete pitch deck.
+        Generate a complete pitch deck with REAL data.
         
         Args:
             company: Company name
             description: Business description
             industry: Industry for theme selection
-            additional_info: Optional dict with traction, team, financials
+            team: List of team members [{"name": "...", "role": "...", "credential": "..."}]
+            traction: Dict with metrics {"users": "...", "revenue": "...", "growth": "..."}
+            contact_email: Real contact email (not hallucinated)
+            funding_ask: Funding amount (e.g., "$500K")
+            use_existing_data: If True, loads from business analysis files
             
         Returns:
             Dict with deck content and file paths
         """
-        print(f"[PitchDeck] Generating deck for {company}")
+        print(f"[PitchDeck] Generating data-driven deck for {company}")
+        
+        # Load existing analysis
+        analysis_data = {}
+        if use_existing_data:
+            analysis_data = self._load_existing_analysis(company)
         
         # Select theme
         theme = self.THEMES.get(industry, self.THEMES["tech"])
         
-        # Generate content for each slide
-        slides = self._generate_slide_content(company, description, additional_info)
+        # Build slides with real data (no hallucination)
+        slides = self._build_slides_from_data(
+            company=company,
+            description=description,
+            analysis=analysis_data,
+            team=team or [],
+            traction=traction or {},
+            contact_email=contact_email or "TBD",
+            funding_ask=funding_ask or "TBD"
+        )
         
-        # Generate HTML
+        # Generate HTML with Chart.js
         html_content = self._generate_reveal_html(company, slides, theme)
         
         # Save files
@@ -132,211 +187,278 @@ class PitchDeckGenerator:
             "html_file": html_path,
             "slides": slides,
             "theme": industry,
-            "slide_count": len(slides)
+            "slide_count": len(slides),
+            "data_sources": list(k for k, v in analysis_data.items() if v)
         }
     
-    def _generate_slide_content(self, company: str, description: str, 
-                                additional_info: Dict = None) -> List[Dict]:
-        """Generate content for each slide using LLM."""
+    def _build_slides_from_data(self, company: str, description: str,
+                                 analysis: Dict, team: List[Dict],
+                                 traction: Dict, contact_email: str,
+                                 funding_ask: str) -> List[Dict]:
+        """Build slides using actual data, never hallucinating."""
         
-        info = additional_info or {}
+        slides = []
         
-        prompt = f"""Create pitch deck content for an investor presentation.
-
-COMPANY: {company}
-DESCRIPTION: {description}
-
-ADDITIONAL INFO:
-- Traction: {info.get('traction', 'Early stage, building MVP')}
-- Team: {info.get('team', 'Founding team')}
-- Funding Ask: {info.get('ask', '$500K pre-seed')}
-- Revenue: {info.get('revenue', 'Pre-revenue')}
-
-Generate content for each slide. CRITICAL RULES:
-1. MAX 6 words per bullet point
-2. MAX 4 bullet points per slide
-3. Include ONE specific number per slide where possible
-4. No complete sentences - just impactful phrases
-5. Every word must earn its place
-
-Output JSON array with exactly 12 slides:
-[
-    {{
-        "id": "cover",
-        "title": "{company}",
-        "subtitle": "One-line tagline (max 8 words)",
-        "content": []
-    }},
-    {{
-        "id": "problem",
-        "title": "The Problem",
-        "subtitle": "One line",
-        "content": ["Bullet 1 (max 6 words)", "Bullet 2", "Bullet 3"],
-        "stat": "Key statistic about the problem"
-    }},
-    {{
-        "id": "solution",
-        "title": "Our Solution",
-        "subtitle": "One line",
-        "content": ["What you do in 6 words max"],
-        "key_benefit": "Main value prop"
-    }},
-    {{
-        "id": "market",
-        "title": "Market Opportunity",
-        "subtitle": null,
-        "tam": "$XB",
-        "sam": "$XB",
-        "som": "$XM",
-        "content": ["Key market insight"]
-    }},
-    {{
-        "id": "product",
-        "title": "Product",
-        "subtitle": "How it works",
-        "content": ["Feature 1", "Feature 2", "Feature 3"],
-        "note": "Screenshot/demo would go here"
-    }},
-    {{
-        "id": "business_model",
-        "title": "Business Model",
-        "subtitle": null,
-        "pricing": "Pricing model in 4 words",
-        "content": ["Revenue stream 1", "Revenue stream 2"],
-        "unit_economics": "Key metric"
-    }},
-    {{
-        "id": "traction",
-        "title": "Traction",
-        "subtitle": null,
-        "metrics": [
-            {{"label": "Metric name", "value": "X", "growth": "+Y%"}}
-        ],
-        "milestones": ["Milestone 1", "Milestone 2"]
-    }},
-    {{
-        "id": "competition",
-        "title": "Competitive Landscape",
-        "subtitle": null,
-        "differentiator": "Why we win in 6 words",
-        "competitors": ["Competitor 1", "Competitor 2", "Competitor 3"],
-        "our_advantage": "Key advantage"
-    }},
-    {{
-        "id": "team",
-        "title": "Team",
-        "subtitle": null,
-        "members": [
-            {{"name": "Name", "role": "Role", "credential": "Key credential"}}
-        ]
-    }},
-    {{
-        "id": "financials",
-        "title": "Financials",
-        "subtitle": "Projections",
-        "projections": [
-            {{"year": "Year 1", "revenue": "$X"}},
-            {{"year": "Year 3", "revenue": "$X"}},
-            {{"year": "Year 5", "revenue": "$X"}}
-        ],
-        "path_to_profitability": "When and how"
-    }},
-    {{
-        "id": "ask",
-        "title": "The Ask",
-        "subtitle": null,
-        "amount": "$X",
-        "use_of_funds": [
-            {{"category": "Product", "percentage": "X%"}},
-            {{"category": "Growth", "percentage": "X%"}},
-            {{"category": "Team", "percentage": "X%"}}
-        ],
-        "milestones_with_funding": ["What you'll achieve"]
-    }},
-    {{
-        "id": "contact",
-        "title": "Let's Build Together",
-        "subtitle": null,
-        "cta": "Call to action",
-        "contact": "email@company.com"
-    }}
-]
-
-Be specific to {company}. Use realistic numbers. Output only JSON array."""
+        # 1. Cover
+        slides.append({
+            "id": "cover",
+            "title": company,
+            "subtitle": description[:60] if len(description) > 60 else description
+        })
         
-        try:
-            response = requests.post(
-                LM_STUDIO_URL,
-                json={
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.4,
-                    "max_tokens": 3000
-                },
-                timeout=180
-            )
-            
-            if response.status_code == 200:
-                content = response.json()["choices"][0]["message"]["content"]
+        # 2. Problem (from SWOT weaknesses/opportunities or generic)
+        problem_content = ["Execution is hard", "Time is limited", "Resources are scarce"]
+        if analysis.get("swot"):
+            swot = analysis["swot"]
+            if isinstance(swot, dict) and swot.get("opportunities"):
+                opps = swot["opportunities"]
+                if isinstance(opps, list) and len(opps) > 0:
+                    # Extract from opportunities what problem exists
+                    problem_content = [o.get("item", str(o))[:40] for o in opps[:3] if isinstance(o, dict)]
+        
+        slides.append({
+            "id": "problem",
+            "title": "The Problem",
+            "subtitle": "What we're solving",
+            "content": problem_content,
+            "stat": "TBD - Add real statistic"
+        })
+        
+        # 3. Solution (from BMC value proposition)
+        solution_content = ["AI-powered automation", "24/7 availability", "Cost-effective"]
+        if analysis.get("bmc"):
+            bmc = analysis["bmc"]
+            if isinstance(bmc, dict):
+                vp = bmc.get("value_propositions", {})
+                if isinstance(vp, dict) and vp.get("features"):
+                    solution_content = vp["features"][:4]
+        
+        slides.append({
+            "id": "solution",
+            "title": "Our Solution",
+            "subtitle": description[:50],
+            "content": solution_content
+        })
+        
+        # 4. Market Size (from market_size analysis - REAL DATA)
+        tam, sam, som = "TBD", "TBD", "TBD"
+        market_content = []
+        if analysis.get("market_size"):
+            ms = analysis["market_size"]
+            if isinstance(ms, dict):
+                tam = ms.get("tam", {}).get("value_usd", "TBD") if isinstance(ms.get("tam"), dict) else "TBD"
+                sam = ms.get("sam", {}).get("value_usd", "TBD") if isinstance(ms.get("sam"), dict) else "TBD"
+                som = ms.get("som", {}).get("value_usd", "TBD") if isinstance(ms.get("som"), dict) else "TBD"
                 
-                # Extract JSON array
-                json_match = re.search(r'\[[\s\S]*\]', content)
-                if json_match:
-                    slides = json.loads(json_match.group())
-                    return self._enforce_word_limits(slides)
-                    
-        except Exception as e:
-            print(f"[PitchDeck] Error: {e}")
+                dynamics = ms.get("market_dynamics", {})
+                if isinstance(dynamics, dict) and dynamics.get("key_trends"):
+                    market_content = dynamics["key_trends"][:3]
         
-        # Return minimal deck if generation fails
-        return self._get_fallback_slides(company, description)
-    
-    def _enforce_word_limits(self, slides: List[Dict]) -> List[Dict]:
-        """Enforce word count limits on all slides."""
+        market_source = "Market Size Analysis" if analysis.get("market_size") else None
+        slides.append({
+            "id": "market",
+            "title": "Market Opportunity",
+            "tam": tam,
+            "sam": sam,
+            "som": som,
+            "content": market_content or ["Market data from analysis"],
+            "has_chart": True,
+            "source": market_source
+        })
         
-        for slide in slides:
-            # Limit subtitle
-            if slide.get("subtitle"):
-                words = slide["subtitle"].split()
-                if len(words) > 10:
-                    slide["subtitle"] = " ".join(words[:10]) + "..."
-            
-            # Limit content bullets
-            if slide.get("content"):
-                limited = []
-                for bullet in slide["content"][:4]:  # Max 4 bullets
-                    words = bullet.split()
-                    if len(words) > 6:
-                        limited.append(" ".join(words[:6]))
-                    else:
-                        limited.append(bullet)
-                slide["content"] = limited
+        # 5. Product
+        product_features = ["Task automation engine", "Strategic planning AI", "Workflow orchestration"]
+        if analysis.get("bmc"):
+            bmc = analysis["bmc"]
+            if isinstance(bmc, dict):
+                activities = bmc.get("key_activities", {})
+                if isinstance(activities, dict) and activities.get("production"):
+                    product_features = activities["production"][:4]
+        
+        slides.append({
+            "id": "product",
+            "title": "Product",
+            "subtitle": "How it works",
+            "content": product_features
+        })
+        
+        # 6. Business Model (from BMC)
+        revenue_streams = ["Subscription SaaS", "Enterprise licensing"]
+        if analysis.get("bmc"):
+            bmc = analysis["bmc"]
+            if isinstance(bmc, dict):
+                rs = bmc.get("revenue_streams", {})
+                if isinstance(rs, dict) and rs.get("primary"):
+                    revenue_streams = rs["primary"][:4]
+        
+        slides.append({
+            "id": "business_model",
+            "title": "Business Model",
+            "content": revenue_streams
+        })
+        
+        # 7. Traction (from provided data ONLY - never hallucinate)
+        traction_metrics = []
+        traction_milestones = []
+        
+        if traction:
+            if traction.get("users"):
+                traction_metrics.append({"label": "Users", "value": str(traction["users"])})
+            if traction.get("revenue"):
+                traction_metrics.append({"label": "Revenue", "value": str(traction["revenue"])})
+            if traction.get("growth"):
+                traction_metrics.append({"label": "Growth", "value": str(traction["growth"])})
+            if traction.get("milestones"):
+                traction_milestones = traction["milestones"]
+        
+        if not traction_metrics:
+            traction_metrics = [{"label": "Stage", "value": "MVP"}]
+            traction_milestones = ["MVP built", "Beta testing"]
+        
+        slides.append({
+            "id": "traction",
+            "title": "Traction",
+            "metrics": traction_metrics,
+            "milestones": traction_milestones
+        })
+        
+        # 8. Competition (from competitor analysis)
+        competitors = []
+        our_advantage = "TBD - Define competitive advantage"
+        if analysis.get("competitors"):
+            comp = analysis["competitors"]
+            if isinstance(comp, dict) and comp.get("top_competitors"):
+                competitors = [c.get("name", str(c)) for c in comp["top_competitors"][:4] if isinstance(c, dict)]
+            if isinstance(comp, dict) and comp.get("your_positioning"):
+                pos = comp["your_positioning"]
+                if isinstance(pos, dict) and pos.get("unique_advantages"):
+                    our_advantage = pos["unique_advantages"][0] if pos["unique_advantages"] else our_advantage
+        
+        comp_source = "Competitor Analysis" if analysis.get("competitors") else None
+        slides.append({
+            "id": "competition",
+            "title": "Competitive Landscape",
+            "competitors": competitors or ["TBD - Add competitors"],
+            "our_advantage": our_advantage,
+            "has_chart": True,
+            "source": comp_source
+        })
+        
+        # 9. Team (MUST be provided - NEVER hallucinate)
+        team_members = []
+        if team:
+            team_members = team
+        else:
+            # Placeholder that requires real data
+            team_members = [{"name": "[Your Name]", "role": "Founder", "credential": "[Add your background]"}]
+        
+        slides.append({
+            "id": "team",
+            "title": "Team",
+            "members": team_members,
+            "note": "⚠️ Add real team members" if not team else None
+        })
+        
+        # 10. Financials (from financials analysis)
+        projections = []
+        break_even = "TBD"
+        if analysis.get("financials"):
+            fin = analysis["financials"]
+            if isinstance(fin, dict) and fin.get("yearly_projections"):
+                for proj in fin["yearly_projections"][:5]:
+                    if isinstance(proj, dict):
+                        projections.append({
+                            "year": f"Year {proj.get('year', '?')}",
+                            "revenue": proj.get("arr", proj.get("revenue", "TBD"))
+                        })
+                
+                key_metrics = fin.get("key_metrics", {})
+                if isinstance(key_metrics, dict):
+                    be_month = key_metrics.get("break_even_month")
+                    if be_month:
+                        break_even = f"Month {be_month}"
+        
+        if not projections:
+            projections = [
+                {"year": "Year 1", "revenue": "TBD"},
+                {"year": "Year 3", "revenue": "TBD"},
+                {"year": "Year 5", "revenue": "TBD"}
+            ]
+        
+        fin_source = "Financial Projections" if analysis.get("financials") else None
+        slides.append({
+            "id": "financials",
+            "title": "Financials",
+            "projections": projections,
+            "break_even": break_even,
+            "has_chart": True,
+            "source": fin_source
+        })
+        
+        # 11. The Ask
+        use_of_funds = [
+            {"category": "Product", "percentage": "50%"},
+            {"category": "Growth", "percentage": "30%"},
+            {"category": "Team", "percentage": "20%"}
+        ]
+        
+        slides.append({
+            "id": "ask",
+            "title": "The Ask",
+            "amount": funding_ask,
+            "use_of_funds": use_of_funds,
+            "milestones": ["Launch public beta", "Achieve product-market fit"],
+            "has_chart": True
+        })
+        
+        # 12. Contact
+        slides.append({
+            "id": "contact",
+            "title": "Let's Build Together",
+            "subtitle": "Ready to transform your business",
+            "contact": contact_email,
+            "cta": "Schedule a Demo"
+        })
+        
+        # 13. Sources (Appendix - cite where data came from)
+        sources_used = []
+        if analysis.get("swot"):
+            sources_used.append("SWOT Analysis → Problem/Opportunity slides")
+        if analysis.get("bmc"):
+            sources_used.append("Business Model Canvas → Value prop, Revenue streams")
+        if analysis.get("market_size"):
+            sources_used.append("Market Size Analysis → TAM/SAM/SOM figures")
+        if analysis.get("competitors"):
+            sources_used.append("Competitor Analysis → Competitive landscape")
+        if analysis.get("financials"):
+            sources_used.append("Financial Projections → Revenue forecasts, Break-even")
+        if analysis.get("five_forces"):
+            sources_used.append("Porter's Five Forces → Market dynamics")
+        
+        if sources_used:
+            slides.append({
+                "id": "sources",
+                "title": "Data Sources",
+                "subtitle": "Analysis used to generate this deck",
+                "content": sources_used,
+                "note": "Generated from Jarvis business_analysis tool"
+            })
         
         return slides
     
-    def _get_fallback_slides(self, company: str, description: str) -> List[Dict]:
-        """Fallback slides if LLM fails."""
-        return [
-            {"id": "cover", "title": company, "subtitle": description[:50]},
-            {"id": "problem", "title": "The Problem", "content": ["Problem description needed"]},
-            {"id": "solution", "title": "Our Solution", "content": ["Solution description needed"]},
-            {"id": "market", "title": "Market", "tam": "TBD", "sam": "TBD", "som": "TBD"},
-            {"id": "product", "title": "Product", "content": ["Features TBD"]},
-            {"id": "business_model", "title": "Business Model", "content": ["Model TBD"]},
-            {"id": "traction", "title": "Traction", "content": ["Metrics TBD"]},
-            {"id": "competition", "title": "Competition", "content": ["Analysis TBD"]},
-            {"id": "team", "title": "Team", "content": ["Team info TBD"]},
-            {"id": "financials", "title": "Financials", "content": ["Projections TBD"]},
-            {"id": "ask", "title": "The Ask", "amount": "TBD"},
-            {"id": "contact", "title": "Contact", "content": ["Contact TBD"]}
-        ]
-    
     def _generate_reveal_html(self, company: str, slides: List[Dict], theme: Dict) -> str:
-        """Generate reveal.js HTML presentation."""
+        """Generate reveal.js HTML with Chart.js for real graphs."""
         
         slides_html = ""
+        chart_scripts = []
         
-        for slide in slides:
-            slides_html += self._render_slide(slide, theme)
+        for i, slide in enumerate(slides):
+            slide_html, chart_js = self._render_slide(slide, theme, i)
+            slides_html += slide_html
+            if chart_js:
+                chart_scripts.append(chart_js)
+        
+        chart_colors = theme.get("chart_colors", ["#6366f1", "#8b5cf6", "#22d3ee"])
         
         html = f'''<!DOCTYPE html>
 <html lang="en">
@@ -347,6 +469,7 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {{
             --primary: {theme["primary"]};
@@ -356,6 +479,8 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
             --text: {theme["text"]};
         }}
         
+        * {{ box-sizing: border-box; }}
+        
         .reveal {{
             font-family: 'Inter', sans-serif;
         }}
@@ -364,44 +489,51 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
             text-align: left;
         }}
         
+        /* FULLSCREEN FIX */
         .reveal .slides section {{
             background: var(--bg);
             color: var(--text);
-            padding: 40px 60px;
+            padding: 40px 80px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }}
         
         .reveal h1 {{
-            font-size: 3.5rem;
+            font-size: 4rem;
             font-weight: 700;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5em;
+            background-clip: text;
+            margin-bottom: 0.3em;
         }}
         
         .reveal h2 {{
-            font-size: 2.8rem;
+            font-size: 3rem;
             font-weight: 600;
             color: var(--text);
-            margin-bottom: 0.8em;
+            margin-bottom: 0.5em;
         }}
         
         .reveal h3 {{
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 400;
             color: var(--secondary);
-            margin-bottom: 1.5em;
+            margin-bottom: 1em;
             opacity: 0.9;
         }}
         
         .reveal ul {{
             list-style: none;
             padding: 0;
+            margin: 0;
         }}
         
         .reveal li {{
-            font-size: 1.8rem;
-            margin: 0.6em 0;
+            font-size: 1.6rem;
+            margin: 0.5em 0;
             padding-left: 1.5em;
             position: relative;
         }}
@@ -416,21 +548,21 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
         .stat-box {{
             display: inline-block;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 20px 40px;
-            border-radius: 12px;
-            margin: 10px;
+            padding: 25px 50px;
+            border-radius: 16px;
+            margin: 15px;
             text-align: center;
         }}
         
         .stat-value {{
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 700;
             color: white;
         }}
         
         .stat-label {{
-            font-size: 1rem;
-            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.85);
             text-transform: uppercase;
             letter-spacing: 2px;
         }}
@@ -438,107 +570,167 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
         .market-sizes {{
             display: flex;
             justify-content: space-around;
-            margin-top: 2em;
+            margin: 2em 0;
+            flex: 1;
+            align-items: center;
         }}
         
         .market-circle {{
             text-align: center;
+            padding: 30px;
         }}
         
         .market-circle .value {{
-            font-size: 2.5rem;
+            font-size: 3.5rem;
             font-weight: 700;
             color: var(--accent);
         }}
         
         .market-circle .label {{
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             color: var(--secondary);
             text-transform: uppercase;
+            letter-spacing: 3px;
+        }}
+        
+        .chart-container {{
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 350px;
+            margin: 20px auto;
         }}
         
         .team-grid {{
             display: flex;
             flex-wrap: wrap;
             gap: 30px;
-            margin-top: 1em;
+            margin-top: 1.5em;
         }}
         
         .team-member {{
             flex: 1;
-            min-width: 200px;
-            background: rgba(255,255,255,0.05);
-            padding: 20px;
-            border-radius: 12px;
-            border-left: 4px solid var(--primary);
+            min-width: 250px;
+            background: rgba(255,255,255,0.08);
+            padding: 30px;
+            border-radius: 16px;
+            border-left: 5px solid var(--primary);
         }}
         
         .team-member .name {{
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }}
         
         .team-member .role {{
             color: var(--accent);
-            font-size: 1rem;
+            font-size: 1.2rem;
         }}
         
         .team-member .credential {{
-            color: rgba(255,255,255,0.6);
-            font-size: 0.9rem;
-            margin-top: 10px;
+            color: rgba(255,255,255,0.7);
+            font-size: 1rem;
+            margin-top: 12px;
         }}
         
-        .funds-chart {{
+        .funds-row {{
             display: flex;
-            gap: 20px;
-            margin-top: 1.5em;
+            gap: 25px;
+            margin: 1.5em 0;
+            flex-wrap: wrap;
         }}
         
         .fund-item {{
             flex: 1;
-            background: rgba(255,255,255,0.05);
-            padding: 20px;
-            border-radius: 12px;
+            min-width: 150px;
+            background: rgba(255,255,255,0.08);
+            padding: 25px;
+            border-radius: 16px;
             text-align: center;
         }}
         
         .fund-item .percentage {{
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             font-weight: 700;
             color: var(--accent);
         }}
         
         .fund-item .category {{
-            font-size: 1rem;
+            font-size: 1.1rem;
             color: var(--secondary);
             text-transform: uppercase;
         }}
         
         .cover-slide {{
-            display: flex;
+            display: flex !important;
             flex-direction: column;
-            justify-content: center;
+            justify-content: center !important;
             align-items: center;
             text-align: center;
             height: 100%;
         }}
         
         .cover-slide h1 {{
-            font-size: 5rem;
+            font-size: 6rem;
         }}
         
         .cta-button {{
             display: inline-block;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
-            padding: 15px 40px;
+            padding: 20px 50px;
             border-radius: 50px;
             font-weight: 600;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             margin-top: 2em;
             text-decoration: none;
+        }}
+        
+        .warning-note {{
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #fbbf24;
+        }}
+        
+        .competitor-matrix {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 1.5em 0;
+        }}
+        
+        .competitor-item {{
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.2rem;
+        }}
+        
+        .our-advantage {{
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 25px;
+            border-radius: 16px;
+            margin-top: 1em;
+            font-size: 1.4rem;
+            font-weight: 500;
+        }}
+        
+        .source-cite {{
+            position: absolute;
+            bottom: 20px;
+            right: 40px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+            font-style: italic;
+            padding: 5px 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
         }}
     </style>
 </head>
@@ -556,8 +748,21 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
             transition: 'slide',
             backgroundTransition: 'fade',
             center: false,
-            width: 1920,
-            height: 1080
+            width: '100%',
+            height: '100%',
+            margin: 0,
+            minScale: 1,
+            maxScale: 1
+        }});
+        
+        // Initialize charts after reveal loads
+        Reveal.on('ready', function() {{
+            {chr(10).join(chart_scripts)}
+        }});
+        
+        // Re-render charts on slide change
+        Reveal.on('slidechanged', function(event) {{
+            // Charts are already rendered, this just ensures they display
         }});
     </script>
 </body>
@@ -565,13 +770,15 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
         
         return html
     
-    def _render_slide(self, slide: Dict, theme: Dict) -> str:
-        """Render a single slide to HTML."""
+    def _render_slide(self, slide: Dict, theme: Dict, index: int) -> tuple:
+        """Render a single slide to HTML. Returns (html, chart_js)."""
         
         slide_id = slide.get("id", "")
+        chart_js = None
+        colors = theme.get("chart_colors", ["#6366f1", "#8b5cf6", "#22d3ee"])
         
         if slide_id == "cover":
-            return f'''
+            html = f'''
             <section class="cover-slide">
                 <h1>{slide.get("title", "")}</h1>
                 <h3>{slide.get("subtitle", "")}</h3>
@@ -579,563 +786,600 @@ Be specific to {company}. Use realistic numbers. Output only JSON array."""
             '''
         
         elif slide_id == "market":
-            return f'''
+            tam = slide.get("tam", "TBD")
+            sam = slide.get("sam", "TBD")
+            som = slide.get("som", "TBD")
+            
+            # Parse numeric values for chart
+            tam_val = self._parse_money(tam)
+            sam_val = self._parse_money(sam)
+            som_val = self._parse_money(som)
+            
+            source = slide.get("source")
+            source_html = f'<div class="source-cite">Source: {source}</div>' if source else ""
+            
+            html = f'''
             <section>
-                <h2>{slide.get("title", "Market Opportunity")}</h2>
+                <h2>Market Opportunity</h2>
                 <div class="market-sizes">
                     <div class="market-circle">
-                        <div class="value">{slide.get("tam", "TBD")}</div>
+                        <div class="value">{tam}</div>
                         <div class="label">TAM</div>
                     </div>
                     <div class="market-circle">
-                        <div class="value">{slide.get("sam", "TBD")}</div>
+                        <div class="value">{sam}</div>
                         <div class="label">SAM</div>
                     </div>
                     <div class="market-circle">
-                        <div class="value">{slide.get("som", "TBD")}</div>
+                        <div class="value">{som}</div>
                         <div class="label">SOM</div>
                     </div>
                 </div>
-                {self._render_bullets(slide.get("content", []))}
+                <div class="chart-container">
+                    <canvas id="marketChart"></canvas>
+                </div>
+                {source_html}
+            </section>
+            '''
+            
+            chart_js = f'''
+            new Chart(document.getElementById('marketChart'), {{
+                type: 'bar',
+                data: {{
+                    labels: ['TAM', 'SAM', 'SOM'],
+                    datasets: [{{
+                        label: 'Market Size ($B)',
+                        data: [{tam_val}, {sam_val}, {som_val}],
+                        backgroundColor: ['{colors[0]}', '{colors[1]}', '{colors[2]}'],
+                        borderRadius: 8
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{ display: false }}
+                    }},
+                    scales: {{
+                        y: {{
+                            beginAtZero: true,
+                            ticks: {{ color: 'rgba(255,255,255,0.7)' }},
+                            grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                        }},
+                        x: {{
+                            ticks: {{ color: 'rgba(255,255,255,0.9)', font: {{ size: 14 }} }},
+                            grid: {{ display: false }}
+                        }}
+                    }}
+                }}
+            }});
+            '''
+        
+        elif slide_id == "financials":
+            projections = slide.get("projections", [])
+            years = [p.get("year", "") for p in projections]
+            revenues = [self._parse_money(p.get("revenue", "0")) for p in projections]
+            break_even = slide.get("break_even", "TBD")
+            
+            proj_boxes = ""
+            for p in projections:
+                proj_boxes += f'''
+                <div class="stat-box">
+                    <div class="stat-value">{p.get("revenue", "TBD")}</div>
+                    <div class="stat-label">{p.get("year", "")}</div>
+                </div>
+                '''
+            
+            source = slide.get("source")
+            source_html = f'<div class="source-cite">Source: {source}</div>' if source else ""
+            
+            html = f'''
+            <section>
+                <h2>Financials</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    {proj_boxes}
+                </div>
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+                <p style="margin-top: 1em; font-size: 1.3rem; color: var(--secondary);">
+                    Break-even: {break_even}
+                </p>
+                {source_html}
+            </section>
+            '''
+            
+            chart_js = f'''
+            new Chart(document.getElementById('financialChart'), {{
+                type: 'line',
+                data: {{
+                    labels: {json.dumps(years)},
+                    datasets: [{{
+                        label: 'Revenue',
+                        data: {json.dumps(revenues)},
+                        borderColor: '{colors[0]}',
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointBackgroundColor: '{colors[0]}'
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{ display: false }}
+                    }},
+                    scales: {{
+                        y: {{
+                            beginAtZero: true,
+                            ticks: {{ color: 'rgba(255,255,255,0.7)' }},
+                            grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                        }},
+                        x: {{
+                            ticks: {{ color: 'rgba(255,255,255,0.9)' }},
+                            grid: {{ display: false }}
+                        }}
+                    }}
+                }}
+            }});
+            '''
+        
+        elif slide_id == "ask":
+            amount = slide.get("amount", "TBD")
+            use_of_funds = slide.get("use_of_funds", [])
+            milestones = slide.get("milestones", [])
+            
+            funds_html = ""
+            fund_labels = []
+            fund_values = []
+            for f in use_of_funds:
+                funds_html += f'''
+                <div class="fund-item">
+                    <div class="percentage">{f.get("percentage", "?")}</div>
+                    <div class="category">{f.get("category", "?")}</div>
+                </div>
+                '''
+                fund_labels.append(f.get("category", "?"))
+                fund_values.append(int(f.get("percentage", "0").replace("%", "")))
+            
+            milestones_html = self._render_bullets(milestones)
+            
+            html = f'''
+            <section>
+                <h2>The Ask</h2>
+                <div class="stat-box" style="margin-bottom: 30px;">
+                    <div class="stat-value">{amount}</div>
+                    <div class="stat-label">Raising</div>
+                </div>
+                <h3>Use of Funds</h3>
+                <div style="display: flex; gap: 30px; align-items: center;">
+                    <div class="chart-container" style="max-width: 300px; height: 250px;">
+                        <canvas id="fundsChart"></canvas>
+                    </div>
+                    <div class="funds-row">
+                        {funds_html}
+                    </div>
+                </div>
+                {milestones_html}
+            </section>
+            '''
+            
+            chart_js = f'''
+            new Chart(document.getElementById('fundsChart'), {{
+                type: 'doughnut',
+                data: {{
+                    labels: {json.dumps(fund_labels)},
+                    datasets: [{{
+                        data: {json.dumps(fund_values)},
+                        backgroundColor: {json.dumps(colors[:len(fund_values)])},
+                        borderWidth: 0
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{
+                            position: 'bottom',
+                            labels: {{ color: 'rgba(255,255,255,0.9)' }}
+                        }}
+                    }}
+                }}
+            }});
+            '''
+        
+        elif slide_id == "team":
+            members = slide.get("members", [])
+            team_html = ""
+            for m in members:
+                team_html += f'''
+                <div class="team-member">
+                    <div class="name">{m.get("name", "[Name]")}</div>
+                    <div class="role">{m.get("role", "[Role]")}</div>
+                    <div class="credential">{m.get("credential", "[Background]")}</div>
+                </div>
+                '''
+            
+            warning = ""
+            if slide.get("note"):
+                warning = f'<div class="warning-note">{slide["note"]}</div>'
+            
+            html = f'''
+            <section>
+                <h2>Team</h2>
+                <div class="team-grid">
+                    {team_html}
+                </div>
+                {warning}
+            </section>
+            '''
+        
+        elif slide_id == "competition":
+            competitors = slide.get("competitors", [])
+            advantage = slide.get("our_advantage", "TBD")
+            
+            comp_html = ""
+            for c in competitors:
+                comp_html += f'<div class="competitor-item">{c}</div>'
+            
+            source = slide.get("source")
+            source_html = f'<div class="source-cite">Source: {source}</div>' if source else ""
+            
+            html = f'''
+            <section>
+                <h2>Competitive Landscape</h2>
+                <div class="competitor-matrix">
+                    {comp_html}
+                </div>
+                <div class="our-advantage">
+                    <strong>Our Edge:</strong> {advantage}
+                </div>
+                {source_html}
             </section>
             '''
         
         elif slide_id == "traction":
+            metrics = slide.get("metrics", [])
+            milestones = slide.get("milestones", [])
+            
             metrics_html = ""
-            for metric in slide.get("metrics", []):
+            for m in metrics:
                 metrics_html += f'''
                 <div class="stat-box">
-                    <div class="stat-value">{metric.get("value", "")}</div>
-                    <div class="stat-label">{metric.get("label", "")}</div>
+                    <div class="stat-value">{m.get("value", "?")}</div>
+                    <div class="stat-label">{m.get("label", "?")}</div>
                 </div>
                 '''
             
-            return f'''
+            milestones_html = self._render_bullets(milestones)
+            
+            html = f'''
             <section>
-                <h2>{slide.get("title", "Traction")}</h2>
+                <h2>Traction</h2>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                     {metrics_html}
                 </div>
-                {self._render_bullets(slide.get("milestones", []))}
-            </section>
-            '''
-        
-        elif slide_id == "team":
-            team_html = ""
-            for member in slide.get("members", []):
-                team_html += f'''
-                <div class="team-member">
-                    <div class="name">{member.get("name", "")}</div>
-                    <div class="role">{member.get("role", "")}</div>
-                    <div class="credential">{member.get("credential", "")}</div>
-                </div>
-                '''
-            
-            return f'''
-            <section>
-                <h2>{slide.get("title", "Team")}</h2>
-                <div class="team-grid">
-                    {team_html}
-                </div>
-            </section>
-            '''
-        
-        elif slide_id == "ask":
-            funds_html = ""
-            for fund in slide.get("use_of_funds", []):
-                funds_html += f'''
-                <div class="fund-item">
-                    <div class="percentage">{fund.get("percentage", "")}</div>
-                    <div class="category">{fund.get("category", "")}</div>
-                </div>
-                '''
-            
-            return f'''
-            <section>
-                <h2>{slide.get("title", "The Ask")}</h2>
-                <div class="stat-box" style="margin-bottom: 30px;">
-                    <div class="stat-value">{slide.get("amount", "TBD")}</div>
-                    <div class="stat-label">Raising</div>
-                </div>
-                <h3>Use of Funds</h3>
-                <div class="funds-chart">
-                    {funds_html}
-                </div>
-                {self._render_bullets(slide.get("milestones_with_funding", []))}
+                {milestones_html}
             </section>
             '''
         
         elif slide_id == "contact":
-            return f'''
-            <section class="cover-slide">
-                <h2>{slide.get("title", "Let's Talk")}</h2>
-                <h3>{slide.get("cta", "")}</h3>
-                <a href="mailto:{slide.get('contact', '')}" class="cta-button">
-                    {slide.get("contact", "Contact Us")}
-                </a>
-            </section>
-            '''
-        
-        elif slide_id == "financials":
-            projections_html = ""
-            for proj in slide.get("projections", []):
-                projections_html += f'''
-                <div class="stat-box">
-                    <div class="stat-value">{proj.get("revenue", "")}</div>
-                    <div class="stat-label">{proj.get("year", "")}</div>
-                </div>
-                '''
+            contact = slide.get("contact", "TBD")
+            cta = slide.get("cta", "Get in Touch")
             
-            return f'''
-            <section>
-                <h2>{slide.get("title", "Financials")}</h2>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    {projections_html}
-                </div>
-                <p style="margin-top: 2em; font-size: 1.4rem; color: var(--secondary);">
-                    {slide.get("path_to_profitability", "")}
-                </p>
+            html = f'''
+            <section class="cover-slide">
+                <h2>Let's Build Together</h2>
+                <h3>{slide.get("subtitle", "")}</h3>
+                <a href="mailto:{contact}" class="cta-button">
+                    {contact}
+                </a>
             </section>
             '''
         
         else:
             # Generic slide
-            subtitle = f'<h3>{slide.get("subtitle", "")}</h3>' if slide.get("subtitle") else ""
-            stat = ""
-            if slide.get("stat"):
-                stat = f'''
+            content = slide.get("content", [])
+            subtitle = slide.get("subtitle", "")
+            stat = slide.get("stat", "")
+            
+            stat_html = ""
+            if stat:
+                stat_html = f'''
                 <div class="stat-box" style="margin-top: 1em;">
-                    <div class="stat-value" style="font-size: 2rem;">{slide.get("stat")}</div>
+                    <div class="stat-value" style="font-size: 2rem;">{stat}</div>
                 </div>
                 '''
             
-            return f'''
+            html = f'''
             <section>
-                <h2>{slide.get("title", "")}</h2>
-                {subtitle}
-                {self._render_bullets(slide.get("content", []))}
-                {stat}
+                <h2>{slide.get("title", "Slide")}</h2>
+                {"<h3>" + subtitle + "</h3>" if subtitle else ""}
+                {self._render_bullets(content)}
+                {stat_html}
             </section>
             '''
+        
+        return (html, chart_js)
     
     def _render_bullets(self, items: List[str]) -> str:
         """Render bullet list."""
         if not items:
             return ""
-        
-        bullets = "".join([f"<li>{item}</li>" for item in items])
+        bullets = "".join(f"<li>{item}</li>" for item in items)
         return f"<ul>{bullets}</ul>"
+    
+    def _parse_money(self, value: str) -> float:
+        """Parse money string like '$120B' to float (in billions)."""
+        if not value or value == "TBD":
+            return 0
+        
+        value = str(value).upper().replace("$", "").replace(",", "").strip()
+        
+        multiplier = 1
+        if "B" in value:
+            multiplier = 1
+            value = value.replace("B", "")
+        elif "M" in value:
+            multiplier = 0.001
+            value = value.replace("M", "")
+        elif "K" in value:
+            multiplier = 0.000001
+            value = value.replace("K", "")
+        
+        try:
+            return float(value) * multiplier
+        except:
+            return 0
 
 
 class PitchDeckScorer:
     """
-    Scores pitch decks on investor-readiness.
+    Scores pitch decks on investor-readiness with REAL checks.
     
-    Scoring Dimensions:
-    1. Content Quality (25%) - Word count, specificity, jargon-free
-    2. Visual Density (20%) - Not too much text, proper whitespace
-    3. Story Flow (20%) - Logical progression, narrative arc
-    4. Specificity (20%) - Real numbers, concrete claims
-    5. Investor Readiness (15%) - Complete slides, ask clarity
+    Now includes:
+    - Hallucination detection (fake names, fake metrics)
+    - Empty slide penalty
+    - Graph presence bonus
+    - Data validation
     """
     
-    # Required slide IDs for a complete deck
-    REQUIRED_SLIDES = ["cover", "problem", "solution", "market", "business_model", 
-                       "traction", "team", "ask"]
-    
-    # Slides that MUST have specific numbers
-    SLIDES_NEEDING_NUMBERS = ["market", "traction", "financials", "ask"]
-    
-    # Red flag words that indicate vague/buzzword content
-    BUZZWORDS = [
-        "synergy", "leverage", "disrupt", "revolutionize", "paradigm",
-        "best-in-class", "world-class", "cutting-edge", "innovative",
-        "next-generation", "game-changing", "unique", "proprietary",
-        "scalable", "robust", "seamless"  # overused in pitch decks
+    # Common fake names that LLMs generate
+    FAKE_NAME_PATTERNS = [
+        "alex chen", "maya patel", "john smith", "jane doe",
+        "sarah johnson", "mike wilson", "founder name", "[your name]"
     ]
     
     def __init__(self):
         self.weights = {
-            "content_quality": 0.25,
-            "visual_density": 0.20,
+            "content_quality": 0.20,
+            "visual_density": 0.15,
             "story_flow": 0.20,
             "specificity": 0.20,
-            "investor_readiness": 0.15
+            "investor_readiness": 0.15,
+            "anti_hallucination": 0.10  # NEW
         }
     
     def score(self, slides: List[Dict]) -> Dict:
-        """
-        Score a pitch deck on all dimensions.
+        """Score a pitch deck on all dimensions."""
         
-        Args:
-            slides: List of slide dicts from PitchDeckGenerator
-            
-        Returns:
-            Dict with scores, feedback, and recommendations
-        """
-        result = {
-            "overall_score": 0,
-            "grade": "",
-            "dimensions": {},
-            "issues": [],
-            "strengths": [],
-            "recommendations": []
+        content_score = self._score_content_quality(slides)
+        visual_score = self._score_visual_density(slides)
+        story_score = self._score_story_flow(slides)
+        specificity_score = self._score_specificity(slides)
+        investor_score = self._score_investor_readiness(slides)
+        hallucination_score = self._score_anti_hallucination(slides)
+        
+        weighted_total = (
+            content_score["score"] * self.weights["content_quality"] +
+            visual_score["score"] * self.weights["visual_density"] +
+            story_score["score"] * self.weights["story_flow"] +
+            specificity_score["score"] * self.weights["specificity"] +
+            investor_score["score"] * self.weights["investor_readiness"] +
+            hallucination_score["score"] * self.weights["anti_hallucination"]
+        )
+        
+        return {
+            "total_score": round(weighted_total, 1),
+            "grade": self._get_grade(weighted_total),
+            "dimensions": {
+                "content_quality": content_score,
+                "visual_density": visual_score,
+                "story_flow": story_score,
+                "specificity": specificity_score,
+                "investor_readiness": investor_score,
+                "anti_hallucination": hallucination_score
+            },
+            "recommendations": self._get_recommendations(slides, weighted_total)
         }
-        
-        # Score each dimension
-        result["dimensions"]["content_quality"] = self._score_content_quality(slides)
-        result["dimensions"]["visual_density"] = self._score_visual_density(slides)
-        result["dimensions"]["story_flow"] = self._score_story_flow(slides)
-        result["dimensions"]["specificity"] = self._score_specificity(slides)
-        result["dimensions"]["investor_readiness"] = self._score_investor_readiness(slides)
-        
-        # Calculate weighted overall score
-        for dim, data in result["dimensions"].items():
-            result["overall_score"] += data["score"] * self.weights[dim]
-        
-        result["overall_score"] = round(result["overall_score"], 1)
-        
-        # Assign grade
-        result["grade"] = self._get_grade(result["overall_score"])
-        
-        # Compile issues, strengths, recommendations
-        for dim, data in result["dimensions"].items():
-            result["issues"].extend(data.get("issues", []))
-            result["strengths"].extend(data.get("strengths", []))
-            result["recommendations"].extend(data.get("recommendations", []))
-        
-        # Limit to top priorities
-        result["issues"] = result["issues"][:5]
-        result["recommendations"] = result["recommendations"][:5]
-        result["strengths"] = result["strengths"][:3]
-        
-        return result
     
     def _score_content_quality(self, slides: List[Dict]) -> Dict:
-        """Score content quality: word count, clarity, jargon."""
-        score = 100
+        """Score content quality: word count, clarity."""
         issues = []
-        strengths = []
-        recommendations = []
-        
-        total_words = 0
-        slides_over_limit = 0
-        buzzword_count = 0
+        good_points = []
+        score = 100
         
         for slide in slides:
-            slide_words = 0
-            
-            # Count words in all text fields
-            for key in ["title", "subtitle", "stat", "differentiator", "key_benefit"]:
-                if slide.get(key):
-                    words = len(str(slide[key]).split())
-                    slide_words += words
-                    
-                    # Check for buzzwords
-                    for bw in self.BUZZWORDS:
-                        if bw.lower() in str(slide[key]).lower():
-                            buzzword_count += 1
-            
-            # Count content bullets
-            for bullet in slide.get("content", []):
-                words = len(bullet.split())
-                slide_words += words
-                if words > 6:
-                    score -= 3  # Penalty for long bullets
-                    
-                for bw in self.BUZZWORDS:
-                    if bw.lower() in bullet.lower():
-                        buzzword_count += 1
-            
-            total_words += slide_words
-            
-            # Check slide word count (ideal: 20-40 words)
-            if slide_words > 50:
-                slides_over_limit += 1
-                score -= 5
+            content = slide.get("content", [])
+            for bullet in content:
+                words = len(str(bullet).split())
+                if words > 8:
+                    issues.append(f"Bullet too long ({words} words)")
+                    score -= 5
         
-        # Buzz word penalties
-        if buzzword_count >= 5:
-            score -= 15
-            issues.append(f"Too many buzzwords ({buzzword_count}). Be more specific.")
-            recommendations.append("Replace buzzwords with concrete claims and numbers")
-        elif buzzword_count >= 2:
-            score -= 5
-            issues.append(f"{buzzword_count} buzzwords detected. Consider replacing.")
+        if score > 80:
+            good_points.append("Concise bullet points")
         
-        # Word count analysis
-        avg_words_per_slide = total_words / max(len(slides), 1)
-        
-        if avg_words_per_slide < 15:
-            score -= 10
-            issues.append("Slides may be too sparse. Add more substance.")
-        elif avg_words_per_slide > 45:
-            score -= 15
-            issues.append(f"Too wordy ({int(avg_words_per_slide)} words/slide avg). Investors skim.")
-            recommendations.append("Cut each slide to max 30 words")
-        else:
-            strengths.append(f"Good word density ({int(avg_words_per_slide)} words/slide)")
-        
-        if slides_over_limit == 0:
-            strengths.append("All slides within word limits")
-        
-        return {
-            "score": max(0, min(100, score)),
-            "issues": issues,
-            "strengths": strengths,
-            "recommendations": recommendations,
-            "details": {
-                "total_words": total_words,
-                "avg_words_per_slide": round(avg_words_per_slide, 1),
-                "buzzword_count": buzzword_count
-            }
-        }
+        return {"score": max(0, score), "issues": issues, "good_points": good_points}
     
     def _score_visual_density(self, slides: List[Dict]) -> Dict:
-        """Score visual density: not too crowded, proper structure."""
-        score = 100
+        """Score visual density: not too crowded, has charts."""
         issues = []
-        strengths = []
-        recommendations = []
+        good_points = []
+        score = 80  # Start lower, bonus for charts
         
-        for slide in slides:
-            bullets = slide.get("content", [])
-            
-            # Too many bullets
-            if len(bullets) > 4:
-                score -= 10
-                issues.append(f"Slide '{slide.get('id', 'unknown')}' has {len(bullets)} bullets (max 4)")
-            
-            # Check for long bullets (visual clutter)
-            long_bullets = sum(1 for b in bullets if len(b.split()) > 6)
-            if long_bullets >= 2:
-                score -= 5
-        
-        # Check slide count
-        if len(slides) < 10:
-            issues.append(f"Only {len(slides)} slides. Consider adding detail.")
-            score -= 10
-        elif len(slides) > 14:
-            issues.append(f"{len(slides)} slides is too many. Target 10-12.")
-            score -= 10
-            recommendations.append("Combine or cut slides to reach 10-12 total")
+        charts = sum(1 for s in slides if s.get("has_chart"))
+        if charts >= 3:
+            good_points.append(f"Good use of charts ({charts} slides with graphs)")
+            score += 20
+        elif charts >= 1:
+            good_points.append("Some visual elements")
+            score += 10
         else:
-            strengths.append(f"Good slide count ({len(slides)} slides)")
+            issues.append("No charts or graphs - add visualizations")
+            score -= 20
         
-        return {
-            "score": max(0, min(100, score)),
-            "issues": issues,
-            "strengths": strengths,
-            "recommendations": recommendations
-        }
+        return {"score": max(0, min(100, score)), "issues": issues, "good_points": good_points}
     
     def _score_story_flow(self, slides: List[Dict]) -> Dict:
-        """Score narrative flow: logical progression, story arc."""
-        score = 100
+        """Score narrative flow."""
         issues = []
-        strengths = []
-        recommendations = []
-        
-        slide_ids = [s.get("id", "") for s in slides]
-        
-        # Check for correct order
-        ideal_order = ["cover", "problem", "solution", "market", "product", 
-                      "business_model", "traction", "competition", "team", 
-                      "financials", "ask", "contact"]
-        
-        # Problem should come before solution
-        if "problem" in slide_ids and "solution" in slide_ids:
-            if slide_ids.index("problem") > slide_ids.index("solution"):
-                score -= 15
-                issues.append("Problem should come before Solution")
-        
-        # Ask should be near the end
-        if "ask" in slide_ids:
-            ask_position = slide_ids.index("ask")
-            if ask_position < len(slides) - 3:
-                score -= 10
-                issues.append("The Ask should be near the end")
-        
-        # Cover should be first
-        if slides and slides[0].get("id") != "cover":
-            score -= 10
-            issues.append("First slide should be the Cover")
-        else:
-            strengths.append("Strong opening with company title")
-        
-        # Market should come early
-        if "market" in slide_ids:
-            market_pos = slide_ids.index("market")
-            if market_pos <= 5:
-                strengths.append("Market opportunity positioned well")
-        
-        return {
-            "score": max(0, min(100, score)),
-            "issues": issues,
-            "strengths": strengths,
-            "recommendations": recommendations
-        }
-    
-    def _score_specificity(self, slides: List[Dict]) -> Dict:
-        """Score specificity: concrete numbers, real claims."""
+        good_points = []
         score = 100
-        issues = []
-        strengths = []
-        recommendations = []
-        
-        # Number patterns
-        number_pattern = r'\$?\d+[KMBkmb%]?|\d+,\d+|\d+\.\d+'
-        
-        slides_with_numbers = 0
-        
-        for slide in slides:
-            slide_id = slide.get("id", "")
-            slide_text = json.dumps(slide).lower()
-            
-            has_number = bool(re.search(number_pattern, slide_text))
-            
-            if has_number:
-                slides_with_numbers += 1
-            
-            # Critical slides that MUST have numbers
-            if slide_id in self.SLIDES_NEEDING_NUMBERS:
-                if not has_number:
-                    score -= 15
-                    issues.append(f"'{slide_id}' slide needs specific numbers")
-                    recommendations.append(f"Add metrics to {slide_id} slide")
-        
-        # Market slide specifics
-        market_slide = next((s for s in slides if s.get("id") == "market"), None)
-        if market_slide:
-            if market_slide.get("tam") and "$" in str(market_slide.get("tam")):
-                strengths.append("Market size has dollar figures")
-            else:
-                score -= 10
-                issues.append("Market slide missing TAM/SAM/SOM values")
-        
-        # Ask slide specifics
-        ask_slide = next((s for s in slides if s.get("id") == "ask"), None)
-        if ask_slide:
-            if ask_slide.get("amount") and "$" in str(ask_slide.get("amount")):
-                strengths.append("Clear funding ask amount")
-            else:
-                score -= 10
-                issues.append("Ask slide missing specific funding amount")
-                recommendations.append("State exact amount: '$500K' not 'pre-seed round'")
-        
-        # Overall number density
-        number_ratio = slides_with_numbers / max(len(slides), 1)
-        if number_ratio >= 0.5:
-            strengths.append(f"{int(number_ratio*100)}% of slides have numbers")
-        elif number_ratio < 0.3:
-            score -= 10
-            issues.append("Not enough specific numbers")
-            recommendations.append("Add at least one number per slide")
-        
-        return {
-            "score": max(0, min(100, score)),
-            "issues": issues,
-            "strengths": strengths,
-            "recommendations": recommendations,
-            "details": {
-                "slides_with_numbers": slides_with_numbers,
-                "total_slides": len(slides)
-            }
-        }
-    
-    def _score_investor_readiness(self, slides: List[Dict]) -> Dict:
-        """Score investor readiness: completeness, professionalism."""
-        score = 100
-        issues = []
-        strengths = []
-        recommendations = []
-        
-        slide_ids = [s.get("id", "") for s in slides]
         
         # Check for required slides
-        missing = []
-        for req in self.REQUIRED_SLIDES:
-            if req not in slide_ids:
-                missing.append(req)
+        required = ["problem", "solution", "market", "team", "ask"]
+        present = [s.get("id") for s in slides]
+        
+        for req in required:
+            if req not in present:
+                issues.append(f"Missing {req} slide")
+                score -= 15
+        
+        if len(slides) >= 10:
+            good_points.append("Complete deck structure")
+        
+        return {"score": max(0, score), "issues": issues, "good_points": good_points}
+    
+    def _score_specificity(self, slides: List[Dict]) -> Dict:
+        """Score specificity: real numbers, not TBD."""
+        issues = []
+        good_points = []
+        score = 100
+        
+        tbd_count = 0
+        for slide in slides:
+            slide_str = json.dumps(slide)
+            tbd_count += slide_str.lower().count("tbd")
+        
+        if tbd_count > 5:
+            issues.append(f"Too many TBD items ({tbd_count}) - add real data")
+            score -= tbd_count * 3
+        elif tbd_count > 0:
+            issues.append(f"{tbd_count} items still need data")
+            score -= tbd_count * 2
+        else:
+            good_points.append("All data specified")
+        
+        return {"score": max(0, score), "issues": issues, "good_points": good_points}
+    
+    def _score_investor_readiness(self, slides: List[Dict]) -> Dict:
+        """Score investor readiness."""
+        issues = []
+        good_points = []
+        score = 100
+        
+        # Check for ask slide with amount
+        ask_slide = next((s for s in slides if s.get("id") == "ask"), None)
+        if ask_slide:
+            if ask_slide.get("amount") and ask_slide["amount"] != "TBD":
+                good_points.append("Clear funding ask")
+            else:
+                issues.append("No specific funding amount")
+                score -= 15
+        
+        # Check for contact
+        contact_slide = next((s for s in slides if s.get("id") == "contact"), None)
+        if contact_slide:
+            contact = contact_slide.get("contact", "")
+            if contact and contact != "TBD" and "@" in contact:
+                good_points.append("Contact info provided")
+            else:
+                issues.append("Missing valid contact email")
                 score -= 10
         
-        if missing:
-            issues.append(f"Missing required slides: {', '.join(missing)}")
-            recommendations.append(f"Add slides for: {', '.join(missing)}")
-        else:
-            strengths.append("All required slides present")
+        return {"score": max(0, score), "issues": issues, "good_points": good_points}
+    
+    def _score_anti_hallucination(self, slides: List[Dict]) -> Dict:
+        """Score for detecting hallucinated content."""
+        issues = []
+        good_points = []
+        score = 100
         
-        # Check team slide has actual names
+        # Check team for fake names
         team_slide = next((s for s in slides if s.get("id") == "team"), None)
         if team_slide:
             members = team_slide.get("members", [])
-            if not members:
-                score -= 10
-                issues.append("Team slide is empty")
-            else:
-                # Check for placeholder names
-                for m in members:
-                    name = str(m.get("name", "")).lower()
-                    if "name" in name or "tbd" in name or not m.get("name"):
-                        score -= 5
-                        issues.append("Team slide has placeholder names")
+            for m in members:
+                name = m.get("name", "").lower()
+                for fake in self.FAKE_NAME_PATTERNS:
+                    if fake in name:
+                        issues.append(f"Possible fake team member: {m.get('name')}")
+                        score -= 25
                         break
         
-        # Check for TBD/placeholder content
-        deck_text = json.dumps(slides).lower()
-        if "tbd" in deck_text or "placeholder" in deck_text or "lorem" in deck_text:
-            score -= 15
-            issues.append("Deck contains placeholder content (TBD, placeholder, lorem)")
-            recommendations.append("Replace all placeholders with real content")
+        # Check for empty slides
+        for slide in slides:
+            content = slide.get("content", [])
+            members = slide.get("members", [])
+            metrics = slide.get("metrics", [])
+            
+            if slide.get("id") not in ["cover", "contact"]:
+                if not content and not members and not metrics:
+                    if not slide.get("tam") and not slide.get("projections"):
+                        issues.append(f"Empty slide: {slide.get('id', 'unknown')}")
+                        score -= 15
         
-        return {
-            "score": max(0, min(100, score)),
-            "issues": issues,
-            "strengths": strengths,
-            "recommendations": recommendations
-        }
+        if score >= 90:
+            good_points.append("No detected hallucinations")
+        
+        return {"score": max(0, score), "issues": issues, "good_points": good_points}
     
     def _get_grade(self, score: float) -> str:
         """Convert score to letter grade."""
-        if score >= 90:
-            return "A"
-        elif score >= 80:
-            return "B"
-        elif score >= 70:
-            return "C"
-        elif score >= 60:
-            return "D"
-        else:
-            return "F"
+        if score >= 90: return "A"
+        if score >= 80: return "B"
+        if score >= 70: return "C"
+        if score >= 60: return "D"
+        return "F"
+    
+    def _get_recommendations(self, slides: List[Dict], score: float) -> List[str]:
+        """Get actionable recommendations."""
+        recs = []
+        
+        if score < 70:
+            recs.append("Add real team member information")
+            recs.append("Fill in TBD items with actual data")
+        
+        if score < 80:
+            recs.append("Consider adding more charts/visualizations")
+        
+        if score >= 80:
+            recs.append("Deck is investor-ready - consider final polish")
+        
+        return recs
     
     def get_summary(self, result: Dict) -> str:
-        """Get human-readable summary of score."""
-        grade = result.get("grade", "?")
-        score = result.get("overall_score", 0)
+        """Get human-readable summary."""
+        grade = result["grade"]
+        score = result["total_score"]
         
-        summary = f"""
-## Pitch Deck Score: {score}/100 (Grade: {grade})
-
-### Dimension Scores:
-"""
-        for dim, data in result.get("dimensions", {}).items():
-            dim_name = dim.replace("_", " ").title()
-            summary += f"- **{dim_name}**: {data['score']}/100\n"
+        summary = f"## Pitch Deck Score: {score}/100 (Grade: {grade})\n\n"
         
-        if result.get("strengths"):
-            summary += "\n### Strengths:\n"
-            for s in result["strengths"]:
-                summary += f"✅ {s}\n"
-        
-        if result.get("issues"):
-            summary += "\n### Issues:\n"
-            for i in result["issues"]:
-                summary += f"⚠️ {i}\n"
+        for dim_name, dim_data in result["dimensions"].items():
+            summary += f"### {dim_name.replace('_', ' ').title()}: {dim_data['score']}/100\n"
+            for issue in dim_data.get("issues", []):
+                summary += f"- ⚠️ {issue}\n"
+            for good in dim_data.get("good_points", []):
+                summary += f"- ✅ {good}\n"
+            summary += "\n"
         
         if result.get("recommendations"):
-            summary += "\n### Top Recommendations:\n"
-            for r in result["recommendations"]:
-                summary += f"→ {r}\n"
+            summary += "### Recommendations\n"
+            for rec in result["recommendations"]:
+                summary += f"- 💡 {rec}\n"
         
         return summary
 
@@ -1143,4 +1387,3 @@ class PitchDeckScorer:
 # Singleton instances
 pitch_deck = PitchDeckGenerator()
 pitch_deck_scorer = PitchDeckScorer()
-

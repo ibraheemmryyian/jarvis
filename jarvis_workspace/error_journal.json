@@ -1,0 +1,36 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2025-12-20T16:26:05.682584",
+    "task_type": "coding",
+    "task_description": "Build React component",
+    "error": "useEffect missing dependency",
+    "error_keywords": [
+      "missing",
+      "dependency",
+      "useeffect"
+    ],
+    "solution": "Add dependency to useEffect array",
+    "stack_trace": null,
+    "agent": null,
+    "occurrences": 3,
+    "last_seen": "2025-12-20T16:29:01.103479"
+  },
+  {
+    "id": 2,
+    "timestamp": "2025-12-20T16:26:05.683729",
+    "task_type": "test",
+    "task_description": "Running test",
+    "error": "Test error message",
+    "error_keywords": [
+      "test",
+      "message",
+      "error"
+    ],
+    "solution": "This is the solution",
+    "stack_trace": null,
+    "agent": null,
+    "occurrences": 7,
+    "last_seen": "2025-12-20T17:44:25.292796"
+  }
+]

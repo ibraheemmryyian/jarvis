@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testimonials Carousel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Color variables */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --dark-bg: #1a1a2e;
+            --light-text: #ffffff;
+            --dark-text: #333333;
+            --button-primary: #667eea;
+            --button-secondary: #f5576c;
+            
+            /* Spacing variables */
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 2rem;
+            --spacing-lg: 3rem;
+            --spacing-xl: 4rem;
+            
+            /* Typography */
+            --font-family: 'Inter', sans-serif;
+            --font-weight-light: 300;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            line-height: 1.6;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: var(--spacing-xl) var(--spacing-md);
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: var(--spacing-lg);
+            font-weight: var(--font-weight-bold);
+        }
+
+        /* Testimonials Carousel */
+        .testimonials-carousel {
+            max-width: 800px;
+            margin: 0 auto var(--spacing-xl);
+            position: relative;
+            overflow: hidden;
+            padding: var(--spacing-md);
+        }
+
+        .carousel-container {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+            will-change: transform;
+        }
+
+        .testimonial {
+            min-width: 100%;
+            padding: var(--spacing-lg);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .testimonial:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .testimonial-content {
+            font-size: 1.1rem;
+            font-weight: var(--font-weight-medium);
+            margin-bottom: var(--spacing-md);
+            line-height: 1.7;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-weight-bold);
+        }
+
+        .author-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .author-info p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .carousel-controls {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        .carousel-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: var(--light-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-btn:hover {
+            background: var(--primary-gradient);
+            transform: scale(1.1);
+        }
+
+        .carousel-indicators {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .indicator.active {
+            background: var(--primary-gradient);
+            transform: scale(1.2);
+        }
+
+        /* Animation for testimonials */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .testimonial {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .testimonials-carousel {
+                padding: var(--spacing-sm);
+            }
+            
+            .testimonial {
+                padding: var(--spacing-md);
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <h1>What Our Customers Say</h1>
+    </section>
+
+    <div class="testimonials-carousel">
+        <div class="carousel-container" id="carouselContainer">
+            <!-- Testimonials will be inserted here by JavaScript -->
+        </div>
+        
+        <div class="carousel-controls">
+            <button class="carousel-btn" id="prevBtn">←</button>
+            <button class="carousel-btn" id="nextBtn">→</button>
+        </div>
+        
+        <div class="carousel-indicators" id="indicatorsContainer">
+            <!-- Indicators will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Testimonial data
+        const testimonials = [
+            {
+                id: 1,
+                content: "This product completely transformed our workflow. The intuitive interface and powerful features saved us countless hours each week.",
+                author: {
+                    name: "Sarah Johnson",
+                    role: "Product Manager"
+                }
+            },
+            {
+                id: 2,
+                content: "I've tried many similar solutions, but this one stands out for its reliability and customer support. Highly recommended!",
+                author: {
+                    name: "Michael Chen",
+                    role: "CTO"
+                }
+            },
+            {
+                id: 3,
+                content: "The ROI was evident within the first month. Our team productivity increased by 40% and client satisfaction scores improved dramatically.",
+                author: {
+                    name: "Emily Rodriguez",
+                    role: "Operations Director"
+                }
+            },
+            {
+                id: 4,
+                content: "What impressed me most was how seamlessly it integrated with our existing systems. The implementation process was smooth and hassle-free.",
+                author: {
+                    name: "David Wilson",
+                    role: "IT Director"
+                }
+            },
+            {
+                id: 5,
+                content: "The analytics dashboard provides insights we never had before. It's like having a data scientist on our team 24/7.",
+                author: {
+                    name: "Lisa Thompson",
+                    role: "Data Analyst"
+                }
+            }
+        ];
+
+        // DOM elements
+        const carouselContainer = document.getElementById('carouselContainer');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const indicatorsContainer = document.getElementById('indicatorsContainer');
+
+        // Carousel state
+        let currentIndex = 0;
+        let autoRotateInterval;
+        const autoRotateDelay = 5000; // 5 seconds
+
+        // Initialize carousel
+        function initCarousel() {
+            // Create testimonial elements
+            testimonials.forEach((testimonial, index) => {
+                const testimonialElement = document.createElement('div');
+                testimonialElement.className = 'testimonial';
+                testimonialElement.innerHTML = `
+                    <div class="testimonial-content">
+                        "${testimonial.content}"
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">${testimonial.author.name.charAt(0)}</div>
+                        <div class="author-info">
+                            <h3>${testimonial.author.name}</h3>
+                            <p>${testimonial.author.role}</p>
+                        </div>
+                    </div>
+                `;
+                carouselContainer.appendChild(testimonialElement);
+            });
+
+            // Create indicators
+            testimonials.forEach((_, index) => {
+                const indicator = document.createElement('div');
+                indicator.className = 'indicator';
+                if (index === 0) indicator.classList.add('active');
+                indicator.addEventListener('click', () => goToSlide(index));
+                indicatorsContainer.appendChild(indicator);
+            });
+
+            // Start auto rotation
+            startAutoRotation();
+            
+            // Add event listeners for buttons
+            prevBtn.addEventListener('click', prevSlide);
+            nextBtn.addEventListener('click', nextSlide);
+            
+            // Pause on hover
+            carouselContainer.parentElement.addEventListener('mouseenter', pauseAutoRotation);
+            carouselContainer.parentElement.addEventListener('mouseleave', startAutoRotation);
+        }
+
+        // Go to specific slide
+        function goToSlide(index) {
+            currentIndex = index;
+            updateCarousel();
+        }
+
+        // Next slide
+        function nextSlide() {
+            currentIndex = (currentIndex + 1) % testimonials.length;
+            updateCarousel();
+        }
+
+        // Previous slide
+        function prevSlide() {
+            currentIndex = (currentIndex - 1 + testimonials.length) % testimonials.length;
+            updateCarousel();
+        }
+
+        // Update carousel display
+        function updateCarousel() {
+            // Move carousel container
+            carouselContainer.style.transform = `translateX(-${currentIndex * 100}%)`;
+            
+            // Update indicators
+            const indicators = document.querySelectorAll('.indicator');
+            indicators.forEach((indicator, index) => {
+                if (index === currentIndex) {
+                    indicator.classList.add('active');
+                } else {
+                    indicator.classList.remove('active');
+                }
+            });
+        }
+
+        // Start auto rotation
+        function startAutoRotation() {
+            clearInterval(autoRotateInterval);
+            autoRotateInterval = setInterval(nextSlide, autoRotateDelay);
+        }
+
+        // Pause auto rotation
+        function pauseAutoRotation() {
+            clearInterval(autoRotateInterval);
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initCarousel);
+    </script>
+</body>
+</html>

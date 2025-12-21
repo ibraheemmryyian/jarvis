@@ -1,0 +1,104 @@
+{
+  "files": [
+    {
+      "path": "src/set-the.html",
+      "type": "html",
+      "created": "2025-12-20T02:32:11.511330",
+      "modified": "2025-12-20T02:32:11.511330",
+      "step": "Set up the HTML structure with semantic elements, meta tags for responsive design, and link to external CSS file while implementing basic CSS reset and modern font loading techniques.",
+      "size_bytes": 2086,
+      "checksum": "b72a13c6d6ea6b95960fa83ce46bf1a0"
+    },
+    {
+      "path": "src/set-the.css",
+      "type": "css",
+      "created": "2025-12-20T02:32:11.524887",
+      "modified": "2025-12-20T02:32:11.524887",
+      "step": "Set up the HTML structure with semantic elements, meta tags for responsive design, and link to external CSS file while implementing basic CSS reset and modern font loading techniques.",
+      "size_bytes": 2980,
+      "checksum": "ffcd5d2311bf07c6eb2a44526a2c2b76"
+    },
+    {
+      "path": "src/create-responsive.html",
+      "type": "html",
+      "created": "2025-12-20T02:37:30.147856",
+      "modified": "2025-12-20T02:37:30.147856",
+      "step": "Create a responsive navigation bar with mobile hamburger menu using CSS Grid/Flexbox and JavaScript toggle functionality for smooth transitions and accessibility features.",
+      "size_bytes": 2223,
+      "checksum": "8879383386e07f3dd14223abdb459ce8"
+    },
+    {
+      "path": "src/create-responsive.css",
+      "type": "css",
+      "created": "2025-12-20T02:37:30.149200",
+      "modified": "2025-12-20T02:37:30.149200",
+      "step": "Create a responsive navigation bar with mobile hamburger menu using CSS Grid/Flexbox and JavaScript toggle functionality for smooth transitions and accessibility features.",
+      "size_bytes": 3682,
+      "checksum": "016ec0667f422fee18bc0009d2c38cb3"
+    },
+    {
+      "path": "src/create-responsive.js",
+      "type": "javascript",
+      "created": "2025-12-20T02:37:30.168190",
+      "modified": "2025-12-20T02:37:30.168190",
+      "step": "Create a responsive navigation bar with mobile hamburger menu using CSS Grid/Flexbox and JavaScript toggle functionality for smooth transitions and accessibility features.",
+      "size_bytes": 2668,
+      "checksum": "b8d0ba1fc7c0f386d58d047cc561e457"
+    },
+    {
+      "path": "src/design-hero.html",
+      "type": "html",
+      "created": "2025-12-20T02:41:12.310702",
+      "modified": "2025-12-20T02:41:12.310702",
+      "step": "Design a hero section with modern gradient backgrounds, centered content layout, and call-to-action buttons using CSS custom properties and flexbox for perfect alignment.",
+      "size_bytes": 5859,
+      "checksum": "2cb3f631f8f5971821fdd74ded053c68"
+    },
+    {
+      "path": "src/implement-features.html",
+      "type": "html",
+      "created": "2025-12-20T02:48:51.394889",
+      "modified": "2025-12-20T02:48:51.394889",
+      "step": "Implement a features section with card-based layout using CSS Grid, hover effects with CSS transitions, and responsive image handling with srcset attributes for optimal performance.",
+      "size_bytes": 8974,
+      "checksum": "15e0218381334dcac1b3b6cf69fc321e"
+    },
+    {
+      "path": "src/build-testimonials.html",
+      "type": "html",
+      "created": "2025-12-20T02:54:59.271105",
+      "modified": "2025-12-20T02:54:59.271105",
+      "step": "Build a testimonials carousel component with JavaScript DOM manipulation, CSS animations for smooth sliding, and auto-rotation functionality with pause on hover.",
+      "size_bytes": 11900,
+      "checksum": "79c04e17609820492b06c19a8c3cc452"
+    },
+    {
+      "path": "src/create-modern.html",
+      "type": "html",
+      "created": "2025-12-20T03:02:46.219331",
+      "modified": "2025-12-20T03:02:46.219331",
+      "step": "Create a modern contact form with HTML5 validation, CSS form styling using grid layout, and JavaScript form submission handling with proper error messaging and success states.",
+      "size_bytes": 15437,
+      "checksum": "911166bc4d8bab8ec35779c0fc535c98"
+    },
+    {
+      "path": "src/add-smooth-scroll.html",
+      "type": "html",
+      "created": "2025-12-20T03:07:19.979782",
+      "modified": "2025-12-20T03:07:19.979782",
+      "step": "Add smooth scroll navigation and anchor link functionality using CSS scroll-behavior and JavaScript event listeners for enhanced user experience.",
+      "size_bytes": 8468,
+      "checksum": "0b2f93de9f524f5dff19f6a000f46be9"
+    },
+    {
+      "path": "src/implement-responsive-design.css",
+      "type": "css",
+      "created": "2025-12-20T03:10:35.270094",
+      "modified": "2025-12-20T03:10:35.270094",
+      "step": "Implement responsive design breakpoints and media queries for mobile-first approach ensuring all elements adapt properly across different screen sizes and devices.",
+      "size_bytes": 4602,
+      "checksum": "8cf3590301d589337f269c4a71f7dcc2"
+    }
+  ],
+  "last_updated": "2025-12-20T03:10:35.270094"
+}

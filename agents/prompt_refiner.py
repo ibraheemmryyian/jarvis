@@ -68,8 +68,74 @@ class PromptRefiner:
         "minimal": {"complexity": "minimal features", "style": "clean, whitespace"},
     }
     
+    # Keywords that trigger resume/continue behavior
+    CONTINUE_KEYWORDS = [
+        "continue", "resume", "keep going", "carry on", "finish", 
+        "complete the", "what's next", "next step", "pending",
+        "where were we", "pick up", "done yet"
+    ]
+    
     def __init__(self):
         self.context_history = []
+    
+    def _detect_resume_intent(self, user_input: str) -> bool:
+        """
+        Check if user wants to resume a previous task.
+        Only triggers if:
+        1. Input is SHORT (< 30 chars) - meaning it's just a continue command
+        2. Input STARTS with a continue keyword - meaning it's the main intent
+        """
+        input_lower = user_input.lower().strip()
+        
+        # Only trigger on short inputs (pure continue commands)
+        if len(input_lower) > 50:
+            return False  # If they wrote a lot, they have a new request
+        
+        # Check if it STARTS with a continue keyword 
+        for kw in self.CONTINUE_KEYWORDS:
+            if input_lower.startswith(kw):
+                return True
+        
+        # Also match if the ENTIRE input is just the keyword
+        if input_lower in self.CONTINUE_KEYWORDS:
+            return True
+            
+        return False
+    
+    def _get_pending_tasks(self) -> str:
+        """Read pending tasks from tasks.md and active_task.md."""
+        pending = []
+        
+        # Check tasks.md
+        tasks_file = os.path.join(WORKSPACE_DIR, "tasks.md")
+        if os.path.exists(tasks_file):
+            try:
+                with open(tasks_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    # Find unchecked items
+                    import re
+                    unchecked = re.findall(r'- \[ \] (.+)', content)
+                    pending.extend(unchecked)
+            except:
+                pass
+        
+        # Check active_task.md
+        active_file = os.path.join(WORKSPACE_DIR, ".context", "active_task.md")
+        if os.path.exists(active_file):
+            try:
+                with open(active_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    # Extract objective
+                    obj_match = re.search(r'## Objective\s*\n(.+)', content)
+                    if obj_match and "[Waiting" not in obj_match.group(1):
+                        pending.insert(0, f"ACTIVE: {obj_match.group(1).strip()}")
+                    # Find remaining items
+                    remaining = re.findall(r'- \[ \] (.+)', content)
+                    pending.extend(remaining)
+            except:
+                pass
+        
+        return pending
     
     def _call_llm(self, prompt: str, temperature: float = 0.3) -> str:
         """Call LLM for refinement."""
@@ -108,6 +174,24 @@ class PromptRefiner:
             }
         """
         input_lower = user_input.lower()
+        
+        # Step 0: Check for resume/continue intent
+        if self._detect_resume_intent(user_input):
+            pending = self._get_pending_tasks()
+            if pending:
+                # Build an expanded prompt from pending tasks
+                task_list = "\n".join(f"- {t}" for t in pending[:5])  # Limit to 5
+                expanded = f"Complete these pending tasks:\n{task_list}"
+                print(f"[PromptRefiner] Detected resume intent. Expanding to:\n{expanded}")
+                
+                return {
+                    "original": user_input,
+                    "needs_clarification": False,
+                    "questions": [],
+                    "refined_prompt": expanded,
+                    "spec": {"type": "resume", "pending_tasks": pending},
+                    "confidence": 0.95
+                }
         
         # Step 1: Detect project type
         project_type = self._detect_project_type(input_lower)
@@ -157,23 +241,40 @@ class PromptRefiner:
         }
     
     def _detect_project_type(self, input_lower: str) -> str:
-        """Detect the type of project from input."""
-        type_keywords = {
-            "crm": ["crm", "customer", "sales", "pipeline", "contacts"],
-            "landing": ["landing", "page", "website", "homepage", "marketing"],
-            "dashboard": ["dashboard", "admin", "analytics", "metrics", "stats"],
-            "api": ["api", "backend", "server", "endpoint", "rest"],
-            "blog": ["blog", "posts", "articles", "content", "cms"],
-            "ecommerce": ["shop", "store", "ecommerce", "products", "cart"],
-            "portfolio": ["portfolio", "showcase", "projects", "gallery"],
+        """Detect the type of project from input. Requires strong signals."""
+        
+        # Strong keywords that immediately identify project type (standalone)
+        strong_keywords = {
+            "crm": ["crm", "customer relationship management"],
+            "landing": ["landing page"],
+            "dashboard": ["dashboard", "admin panel"],
+            "api": ["api", "backend", "rest api"],
+            "blog": ["blog"],
+            "ecommerce": ["ecommerce", "e-commerce", "online store"],
+            "portfolio": ["portfolio"],
         }
         
-        for proj_type, keywords in type_keywords.items():
+        # First check for strong keywords
+        for proj_type, keywords in strong_keywords.items():
             for kw in keywords:
                 if kw in input_lower:
                     return proj_type
         
-        return "website"  # Default assumption
+        # Weak keywords need 2+ matches to trigger
+        weak_keywords = {
+            "crm": ["sales", "pipeline", "deals", "customer"],
+            "landing": ["homepage", "marketing", "signup"],
+            "dashboard": ["analytics", "metrics", "stats", "charts"],
+            "ecommerce": ["products", "cart", "checkout"],
+        }
+        
+        for proj_type, keywords in weak_keywords.items():
+            matches = sum(1 for kw in keywords if kw in input_lower)
+            if matches >= 2:
+                return proj_type
+        
+        # Default: don't assume project type, preserve original
+        return "custom"
     
     def _extract_inferences(self, input_lower: str) -> Dict:
         """Extract inferences from keywords."""
@@ -196,28 +297,46 @@ class PromptRefiner:
         return inferences
     
     def _generate_refined_prompt(self, spec: Dict) -> str:
-        """Generate a detailed prompt from spec."""
+        """Generate a detailed prompt from spec, preserving original intent."""
+        original = spec.get("original_request", "")
         project_type = spec.get("project_type", "project")
         
-        prompt = f"Build a {project_type}"
+        # If project type is known (matched a template), use template-based prompt
+        if project_type in self.PROJECT_TEMPLATES:
+            prompt = f"Build a {project_type}"
+            
+            if spec.get("style"):
+                prompt += f" with a {spec['style']} design"
+            
+            if spec.get("features"):
+                features = spec["features"]
+                if isinstance(features, list):
+                    prompt += f". Include: {', '.join(features)}"
+                else:
+                    prompt += f". Include: {features}"
+            
+            if spec.get("stack"):
+                prompt += f". Use {spec['stack']}"
+            
+            if spec.get("theme"):
+                prompt += f". {spec['theme'].title()} theme"
+            
+            prompt += ". Make it production-ready with clean code and modern best practices."
+            return prompt
         
-        if spec.get("style"):
-            prompt += f" with a {spec['style']} design"
+        # For unknown project types, PRESERVE the original request
+        # Only add enhancements, don't replace the user's intent
+        prompt = original
         
-        if spec.get("features"):
-            features = spec["features"]
-            if isinstance(features, list):
-                prompt += f". Include: {', '.join(features)}"
-            else:
-                prompt += f". Include: {features}"
+        # Add inferred details
+        if spec.get("theme") and spec["theme"].lower() not in original.lower():
+            prompt += f" {spec['theme'].title()} theme."
         
-        if spec.get("stack"):
-            prompt += f". Use {spec['stack']}"
+        if spec.get("stack") and spec["stack"].lower() not in original.lower():
+            prompt += f" Use {spec['stack']}."
         
-        if spec.get("theme"):
-            prompt += f". {spec['theme'].title()} theme"
-        
-        prompt += ". Make it production-ready with clean code and modern best practices."
+        if spec.get("style") and spec["style"] not in original.lower():
+            prompt += f" Design: {spec['style']}."
         
         return prompt
     

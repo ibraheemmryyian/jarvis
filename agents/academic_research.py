@@ -531,7 +531,247 @@ Output only JSON."""
             return {"error": str(e)}
         
         return {"error": "Failed to analyze"}
+    
+    def write_research_paper(self, topic: str, paper_type: str = "research", 
+                             include_sources: bool = True) -> Dict:
+        """
+        Generate a complete academic research paper.
+        
+        Args:
+            topic: Research topic/question
+            paper_type: 'research', 'review', 'case_study', 'thesis_chapter'
+            include_sources: Whether to search and cite real sources
+            
+        Returns:
+            Dict with complete paper content and metadata
+        """
+        print(f"[Academic] Writing {paper_type} paper on: {topic}")
+        
+        # Get real sources if requested
+        sources = []
+        citations = []
+        if include_sources:
+            search_results = self.search(topic, max_results=15)
+            sources = search_results["papers"]
+            for i, paper in enumerate(sources):
+                citations.append({
+                    "num": i + 1,
+                    "citation": self.generate_citation(paper, "APA"),
+                    "title": paper["title"]
+                })
+        
+        # Define paper structure based on type
+        if paper_type == "research":
+            sections = ["Abstract", "Introduction", "Literature Review", 
+                       "Methodology", "Results", "Discussion", "Conclusion"]
+        elif paper_type == "review":
+            sections = ["Abstract", "Introduction", "Background", 
+                       "Current State of Research", "Analysis", 
+                       "Future Directions", "Conclusion"]
+        elif paper_type == "case_study":
+            sections = ["Abstract", "Introduction", "Case Background",
+                       "Analysis", "Findings", "Implications", "Conclusion"]
+        else:  # thesis_chapter
+            sections = ["Introduction", "Theoretical Framework", 
+                       "Literature Review", "Methodology", "Analysis", 
+                       "Discussion", "Summary"]
+        
+        # Generate each section
+        paper_content = {}
+        full_paper = f"# {topic}\n\n"
+        
+        for section in sections:
+            print(f"[Academic] Writing: {section}...")
+            content = self._write_section(topic, section, paper_type, 
+                                         sources[:10], paper_content)
+            paper_content[section] = content
+            full_paper += f"## {section}\n\n{content}\n\n"
+        
+        # Add references
+        if citations:
+            full_paper += "## References\n\n"
+            for cit in citations:
+                full_paper += f"[{cit['num']}] {cit['citation']}\n\n"
+        
+        result = {
+            "topic": topic,
+            "paper_type": paper_type,
+            "timestamp": datetime.now().isoformat(),
+            "sections": paper_content,
+            "full_paper": full_paper,
+            "citations": citations,
+            "word_count": len(full_paper.split())
+        }
+        
+        # Save to file
+        self._save_paper(topic, result)
+        
+        return result
+    
+    def _write_section(self, topic: str, section: str, paper_type: str,
+                       sources: List[Dict], previous_sections: Dict) -> str:
+        """Generate a single section of the paper."""
+        
+        # Build context from sources
+        source_context = ""
+        if sources:
+            source_context = "\\n\\nRelevant sources to cite:\\n"
+            for i, s in enumerate(sources[:5]):
+                source_context += f"[{i+1}] {s['title']} - {s.get('abstract', '')[:200]}\\n"
+        
+        # Previous sections summary for coherence
+        prev_context = ""
+        if previous_sections:
+            prev_context = "\\n\\nPrevious sections written:\\n"
+            for sec_name, sec_content in previous_sections.items():
+                prev_context += f"{sec_name}: {sec_content[:300]}...\\n"
+        
+        prompts = {
+            "Abstract": f"""Write an academic abstract for a {paper_type} paper on:
+"{topic}"
+
+The abstract should:
+- Be 150-250 words
+- State the research problem/question
+- Briefly describe the methodology
+- Summarize key findings/arguments
+- State the significance
+
+Write in formal academic style. Output only the abstract text.""",
+
+            "Introduction": f"""Write the Introduction section for a {paper_type} paper on:
+"{topic}"
+{source_context}
+
+The introduction should:
+- Hook the reader with the significance of the topic
+- Provide background context
+- State the research question/objective
+- Briefly outline the paper structure
+- Be 300-500 words
+- Use citations like [1], [2] where appropriate
+
+Write in formal academic style.""",
+
+            "Literature Review": f"""Write a Literature Review section for a {paper_type} paper on:
+"{topic}"
+{source_context}
+
+The literature review should:
+- Organize sources thematically
+- Show how existing research relates to your topic
+- Identify gaps in the literature
+- Use citations like [1], [2], etc.
+- Be 400-600 words
+
+Write in formal academic style.""",
+
+            "Methodology": f"""Write the Methodology section for a {paper_type} paper on:
+"{topic}"
+{prev_context}
+
+The methodology should:
+- Describe the research approach (qualitative/quantitative/mixed)
+- Explain data collection methods
+- Describe analysis techniques
+- Address limitations
+- Be 300-400 words
+
+Write in formal academic style.""",
+
+            "Results": f"""Write the Results section for a {paper_type} paper on:
+"{topic}"
+{prev_context}
+
+The results should:
+- Present findings objectively
+- Use clear, organized presentation
+- Reference specific data/observations
+- Avoid interpretation (save for Discussion)
+- Be 300-500 words
+
+Write in formal academic style.""",
+
+            "Discussion": f"""Write the Discussion section for a {paper_type} paper on:
+"{topic}"
+{prev_context}
+{source_context}
+
+The discussion should:
+- Interpret the results
+- Compare findings to existing literature
+- Address implications
+- Acknowledge limitations
+- Suggest future research
+- Be 400-600 words
+- Use citations where appropriate
+
+Write in formal academic style.""",
+
+            "Conclusion": f"""Write the Conclusion section for a {paper_type} paper on:
+"{topic}"
+{prev_context}
+
+The conclusion should:
+- Summarize key findings
+- Restate the significance
+- Provide final thoughts
+- NOT introduce new information
+- Be 150-250 words
+
+Write in formal academic style.""",
+        }
+        
+        # Default prompt for sections not specifically defined
+        default_prompt = f"""Write the "{section}" section for a {paper_type} paper on:
+"{topic}"
+{source_context}
+{prev_context}
+
+Write 300-500 words in formal academic style.
+Use citations like [1], [2] where appropriate."""
+        
+        prompt = prompts.get(section, default_prompt)
+        
+        try:
+            response = requests.post(
+                LM_STUDIO_URL,
+                json={
+                    "messages": [
+                        {"role": "system", "content": "You are an expert academic writer. Write in formal, scholarly style with proper academic tone. Be precise and well-structured."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1500
+                },
+                timeout=120
+            )
+            
+            if response.status_code == 200:
+                content = response.json()["choices"][0]["message"]["content"]
+                # Clean up any thinking tags
+                if "<think>" in content:
+                    content = content.split("</think>")[-1].strip()
+                return content
+                
+        except Exception as e:
+            return f"[Error generating {section}: {e}]"
+        
+        return f"[Failed to generate {section}]"
+    
+    def _save_paper(self, topic: str, result: Dict):
+        """Save the complete paper to file."""
+        safe_name = re.sub(r'[^a-zA-Z0-9]', '_', topic)[:50]
+        filename = f"paper_{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        filepath = os.path.join(self.results_dir, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(result["full_paper"])
+        
+        print(f"[Academic] Paper saved to: {filepath}")
+        result["saved_to"] = filepath
 
 
 # Singleton instance
 academic_research = AcademicResearch()
+

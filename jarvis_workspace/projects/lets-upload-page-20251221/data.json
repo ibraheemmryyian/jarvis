@@ -1,0 +1,148 @@
+{
+  "id": 1,
+  "uploadDate": "2025-12-16T04:36:00Z",
+  "fileName": "Meeting_Notes_Q4.pdf",
+  "fileSize": "2.4 MB",
+  "pages": 3,
+  "metadata": {
+    "title": "Meeting Notes",
+    "content": "Discussed Q4 goals and resource allocation.",
+    "tags": ["meeting", "q4"],
+    "createdAt": "2025-12-15T10:30:00Z"
+  },
+  "status": "processed"
+}
+
+{
+  "features": [
+    {
+      "id": "feature-001",
+      "name": "User Dashboard",
+      "status": "in-progress",
+      "estimatedCompletion": "2025-12-20",
+      "owner": "backend-team",
+      "apiEndpoints": [
+        "/features/user-dashboard"
+      ]
+    },
+    {
+      "id": "feature-002",
+      "name": "Real-time Notifications",
+      "status": "planning",
+      "estimatedCompletion": "2025-12-25",
+      "owner": "backend-team",
+      "apiEndpoints": [
+        "/notifications",
+        "/events"
+      ]
+    }
+  ]
+}
+
+{
+  "featureId": "feature-001",
+  "name": "User Dashboard",
+  "status": "in-progress",
+  "lastUpdated": "2025-12-16T10:00:00Z",
+  "milestones": [
+    {
+      "name": "Schema Design",
+      "status": "completed",
+      "date": "2025-12-10"
+    },
+    {
+      "name": "API Implementation",
+      "status": "in-progress",
+      "date": "2025-12-16"
+    }
+  ],
+  "apiEndpoints": [
+    "/features/user-dashboard"
+  ]
+}
+
+{
+  "testCases": [
+    {
+      "id": "tc-001",
+      "description": "Verify user can view dashboard",
+      "expected": "200 OK with dashboard data"
+    }
+  ],
+  "owner": "qa-team",
+  "priority": "high"
+}
+
+{
+  "id": "test-plan-001",
+  "featureId": "feature-001",
+  "status": "submitted",
+  "createdAt": "2025-12-16T11:00:00Z"
+}
+
+{
+  "featureId": "feature-001",
+  "endpoints": [
+    {
+      "path": "/features/user-dashboard",
+      "method": "GET",
+      "description": "Retrieve user dashboard data"
+    },
+    {
+      "path": "/features/user-dashboard/stats",
+      "method": "POST",
+      "description": "Update dashboard stats"
+    }
+  ]
+}
+
+{
+  "file": "waste_valorization_report.pdf",
+  "filename": "waste_valorization_report.pdf",
+  "upload_type": "report",
+  "metadata": {
+    "audience": "SMEs",
+    "subject": "Waste Valorization for SMEs",
+    "description": "A 14-page guide to implementing waste valorization with minimal investment and maximum return."
+  }
+}
+
+{
+  "upload_id": "upload_7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p",
+  "status": "success",
+  "message": "File uploaded successfully.",
+  "file_name": "waste_valorization_report.pdf",
+  "upload_time": "2025-12-16T15:30:00Z"
+}
+
+{
+  "upload_id": "upload_7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p"
+}
+
+{
+  "upload_id": "upload_7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p",
+  "extracted_metadata": {
+    "title": "Waste Valorization for SMEs",
+    "author": "GreenTech Solutions",
+    "date_published": "2024-11-15",
+    "page_count": 14,
+    "keywords": ["waste", "valorization", "SMEs", "sustainability", "recycling", "profitability"],
+    "sections": [
+      "Introduction",
+      "Benefits of Waste Valorization",
+      "Step-by-Step Implementation",
+      "Case Studies",
+      "Resources & Tools"
+    ],
+    "target_audience": "SMEs",
+    "summary": "This guide outlines practical steps for SMEs to implement waste valorization with minimal investment and maximum return. Includes case studies, tools, and implementation checklists."
+  },
+  "status": "success",
+  "message": "Metadata extracted successfully."
+}
+
+{
+  "email_id": "upload_12345",
+  "recipient_type": "SME",
+  "send_status": "sent"
+}

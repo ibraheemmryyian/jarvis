@@ -17,6 +17,9 @@ ALLOWED_COMMANDS = {
     "npx": True,  # Allow all npx commands
     "pip": ["install", "list", "freeze", "--version", "-V", "show", "check"],
     "python": True,  # Allow python with restrictions
+    "python3": True,  # Linux/Mac compatibility
+    "python3.exe": True,  # Windows
+    "py": True,  # Windows Python launcher
     "node": True,  # Allow node
     
     # Build tools
@@ -34,12 +37,16 @@ ALLOWED_COMMANDS = {
     
     # Utilities
     "mkdir": True,
+    "md": True,  # Windows mkdir
     "cd": True,
     "ls": True,
     "dir": True,
     "cat": True,
     "type": True,  # Windows equivalent of cat
     "echo": True,
+    "copy": True,  # Windows
+    "cp": True,    # Unix
+    "powershell": True,  # For Windows commands
 }
 
 # BLOCKED COMMANDS - COMPREHENSIVE LIST FOR 100% SAFETY
@@ -189,6 +196,9 @@ class TerminalAgent:
                 "command": command,
                 "duration": 0
             }
+        
+        # Transform Linux commands to Windows equivalents
+        command = self._transform_command(command)
         
         # Security check
         security_check = self._security_check(command)
@@ -436,6 +446,32 @@ class TerminalAgent:
         return self.run(command, project_path, timeout=5)
     
     # === Private Methods ===
+    
+    def _transform_command(self, command: str) -> str:
+        """Transform Linux commands to Windows equivalents."""
+        import platform
+        
+        # Only transform on Windows
+        if platform.system() != "Windows":
+            return command
+        
+        # Command transformations
+        transformations = [
+            # python3 → python (Windows)
+            ("python3 ", "python "),
+            ("python3.exe ", "python "),
+            # mkdir -p → mkdir (Windows creates parents by default with /p)
+            ("mkdir -p ", "mkdir "),
+            # Use PowerShell for mkdir to ensure parent creation
+        ]
+        
+        result = command
+        for linux_cmd, windows_cmd in transformations:
+            if result.startswith(linux_cmd):
+                result = windows_cmd + result[len(linux_cmd):]
+            result = result.replace(f" {linux_cmd}", f" {windows_cmd}")
+        
+        return result
     
     def _security_check(self, command: str) -> Dict:
         """

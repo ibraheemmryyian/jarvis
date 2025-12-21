@@ -1,0 +1,57 @@
+{
+  "tam": {
+    "value_usd": "$120B",
+    "description": "Global AI software market ($60B) + Startup services market ($60B). AI assistant co-founders represent a subset of both markets, focusing on AI-enabled business solutions and startup support services.",
+    "growth_rate": "25%",
+    "data_sources": [
+      "Statista AI Software Market",
+      "Startup Genome Report",
+      "CB Insights"
+    ]
+  },
+  "sam": {
+    "value_usd": "$36B",
+    "description": "Serviceable Addressable Market includes startups and entrepreneurs using AI services, specifically those seeking co-founder-level AI assistance. This represents 30% of TAM.",
+    "percentage_of_tam": "30%",
+    "key_constraints": [
+      "Limited awareness of AI co-founders",
+      "High competition from existing startup tools",
+      "Need for trust and proven results"
+    ]
+  },
+  "som": {
+    "value_usd": "$2.4B",
+    "description": "Serviceable Obtainable Market represents realistic market share achievable through targeted go-to-market strategies, focusing on early-stage startups and angel investors.",
+    "percentage_of_sam": "6.7%",
+    "assumptions": [
+      "Strong brand positioning in AI startup space",
+      "Partnerships with accelerators and incubators",
+      "Competitive pricing strategy",
+      "3-5 year timeline for market penetration"
+    ]
+  },
+  "market_dynamics": {
+    "key_trends": [
+      "Rapid AI adoption across startups",
+      "Growing demand for productivity tools",
+      "Increased venture capital funding for AI startups",
+      "Remote work enabling global service delivery"
+    ],
+    "disruption_risks": [
+      "Large tech companies building in-house AI assistants",
+      "Open-source AI alternatives",
+      "Traditional startup support platforms"
+    ],
+    "regulatory_factors": [
+      "Data privacy regulations (GDPR, CCPA)",
+      "AI ethics guidelines",
+      "Cross-border data transfer restrictions"
+    ],
+    "timing": "Now is the right time due to mature AI capabilities, increased startup funding, and growing recognition of AI's role in business operations"
+  },
+  "bottom_up_validation": {
+    "potential_customers": "100,000",
+    "average_deal_size": "$24,000",
+    "calculated_som": "$2.4B"
+  }
+}

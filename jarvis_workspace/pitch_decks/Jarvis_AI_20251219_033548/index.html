@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis AI - Investor Presentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --accent: #22d3ee;
+            --bg: #0f172a;
+            --text: #f8fafc;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        .reveal {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .reveal .slides {
+            text-align: left;
+        }
+        
+        /* FULLSCREEN FIX */
+        .reveal .slides section {
+            background: var(--bg);
+            color: var(--text);
+            padding: 40px 80px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        
+        .reveal h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.3em;
+        }
+        
+        .reveal h2 {
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5em;
+        }
+        
+        .reveal h3 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--secondary);
+            margin-bottom: 1em;
+            opacity: 0.9;
+        }
+        
+        .reveal ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .reveal li {
+            font-size: 1.6rem;
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+            position: relative;
+        }
+        
+        .reveal li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+        
+        .stat-box {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 25px 50px;
+            border-radius: 16px;
+            margin: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .stat-label {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.85);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .market-sizes {
+            display: flex;
+            justify-content: space-around;
+            margin: 2em 0;
+            flex: 1;
+            align-items: center;
+        }
+        
+        .market-circle {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .market-circle .value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .market-circle .label {
+            font-size: 1.4rem;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 350px;
+            margin: 20px auto;
+        }
+        
+        .team-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-top: 1.5em;
+        }
+        
+        .team-member {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(255,255,255,0.08);
+            padding: 30px;
+            border-radius: 16px;
+            border-left: 5px solid var(--primary);
+        }
+        
+        .team-member .name {
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .team-member .role {
+            color: var(--accent);
+            font-size: 1.2rem;
+        }
+        
+        .team-member .credential {
+            color: rgba(255,255,255,0.7);
+            font-size: 1rem;
+            margin-top: 12px;
+        }
+        
+        .funds-row {
+            display: flex;
+            gap: 25px;
+            margin: 1.5em 0;
+            flex-wrap: wrap;
+        }
+        
+        .fund-item {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(255,255,255,0.08);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+        }
+        
+        .fund-item .percentage {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .fund-item .category {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            text-transform: uppercase;
+        }
+        
+        .cover-slide {
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center !important;
+            align-items: center;
+            text-align: center;
+            height: 100%;
+        }
+        
+        .cover-slide h1 {
+            font-size: 6rem;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 20px 50px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.4rem;
+            margin-top: 2em;
+            text-decoration: none;
+        }
+        
+        .warning-note {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #fbbf24;
+        }
+        
+        .competitor-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 1.5em 0;
+        }
+        
+        .competitor-item {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+        
+        .our-advantage {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 25px;
+            border-radius: 16px;
+            margin-top: 1em;
+            font-size: 1.4rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <section class="cover-slide">
+                <h1>Jarvis AI</h1>
+                <h3>AI-powered autonomous execution system</h3>
+            </section>
+            
+            <section>
+                <h2>The Problem</h2>
+                <h3>What we're solving</h3>
+                <ul><li>Growing demand for AI-powered business t</li><li>Partnership opportunities with incubator</li><li>Expansion into international markets wit</li></ul>
+                
+                <div class="stat-box" style="margin-top: 1em;">
+                    <div class="stat-value" style="font-size: 2rem;">TBD - Add real statistic</div>
+                </div>
+                
+            </section>
+            
+            <section>
+                <h2>Our Solution</h2>
+                <h3>AI-powered autonomous execution system</h3>
+                <ul><li>24/7 availability</li><li>Strategic planning assistance</li><li>Market research and competitive analysis</li><li>Product development guidance</li></ul>
+                
+            </section>
+            
+            <section>
+                <h2>Market Opportunity</h2>
+                <div class="market-sizes">
+                    <div class="market-circle">
+                        <div class="value">$120B</div>
+                        <div class="label">TAM</div>
+                    </div>
+                    <div class="market-circle">
+                        <div class="value">$36B</div>
+                        <div class="label">SAM</div>
+                    </div>
+                    <div class="market-circle">
+                        <div class="value">$2.4B</div>
+                        <div class="label">SOM</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="marketChart"></canvas>
+                </div>
+            </section>
+            
+            <section>
+                <h2>Product</h2>
+                <h3>How it works</h3>
+                <ul><li>AI model training</li><li>Platform development</li><li>Data collection and analysis</li><li>Feature updates</li></ul>
+                
+            </section>
+            
+            <section>
+                <h2>Business Model</h2>
+                
+                <ul><li>Subscription fees</li><li>Enterprise licensing</li><li>Premium feature add-ons</li><li>Consulting services</li></ul>
+                
+            </section>
+            
+            <section>
+                <h2>Traction</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    
+                <div class="stat-box">
+                    <div class="stat-value">MVP</div>
+                    <div class="stat-label">Stage</div>
+                </div>
+                
+                </div>
+                <ul><li>MVP built</li><li>Beta testing</li></ul>
+            </section>
+            
+            <section>
+                <h2>Competitive Landscape</h2>
+                <div class="competitor-matrix">
+                    <div class="competitor-item">Chatfuel</div><div class="competitor-item">ManyChat</div><div class="competitor-item">Flow XO</div><div class="competitor-item">Botpress</div>
+                </div>
+                <div class="our-advantage">
+                    <strong>Our Edge:</strong> More intuitive user interface
+                </div>
+            </section>
+            
+            <section>
+                <h2>Team</h2>
+                <div class="team-grid">
+                    
+                <div class="team-member">
+                    <div class="name">Ibrahim</div>
+                    <div class="role">Founder</div>
+                    <div class="credential">Built Jarvis</div>
+                </div>
+                
+                </div>
+                
+            </section>
+            
+            <section>
+                <h2>Financials</h2>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    
+                <div class="stat-box">
+                    <div class="stat-value">$300,000</div>
+                    <div class="stat-label">Year 1</div>
+                </div>
+                
+                <div class="stat-box">
+                    <div class="stat-value">$336,000</div>
+                    <div class="stat-label">Year 2</div>
+                </div>
+                
+                <div class="stat-box">
+                    <div class="stat-value">$376,320</div>
+                    <div class="stat-label">Year 3</div>
+                </div>
+                
+                <div class="stat-box">
+                    <div class="stat-value">$413,952</div>
+                    <div class="stat-label">Year 4</div>
+                </div>
+                
+                <div class="stat-box">
+                    <div class="stat-value">$455,347</div>
+                    <div class="stat-label">Year 5</div>
+                </div>
+                
+                </div>
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+                <p style="margin-top: 1em; font-size: 1.3rem; color: var(--secondary);">
+                    Break-even: Month 18
+                </p>
+            </section>
+            
+            <section>
+                <h2>The Ask</h2>
+                <div class="stat-box" style="margin-bottom: 30px;">
+                    <div class="stat-value">TBD</div>
+                    <div class="stat-label">Raising</div>
+                </div>
+                <h3>Use of Funds</h3>
+                <div style="display: flex; gap: 30px; align-items: center;">
+                    <div class="chart-container" style="max-width: 300px; height: 250px;">
+                        <canvas id="fundsChart"></canvas>
+                    </div>
+                    <div class="funds-row">
+                        
+                <div class="fund-item">
+                    <div class="percentage">50%</div>
+                    <div class="category">Product</div>
+                </div>
+                
+                <div class="fund-item">
+                    <div class="percentage">30%</div>
+                    <div class="category">Growth</div>
+                </div>
+                
+                <div class="fund-item">
+                    <div class="percentage">20%</div>
+                    <div class="category">Team</div>
+                </div>
+                
+                    </div>
+                </div>
+                <ul><li>Launch public beta</li><li>Achieve product-market fit</li></ul>
+            </section>
+            
+            <section class="cover-slide">
+                <h2>Let's Build Together</h2>
+                <h3>Ready to transform your business</h3>
+                <a href="mailto:contact@jarvisai.io" class="cta-button">
+                    contact@jarvisai.io
+                </a>
+            </section>
+            
+            <section>
+                <h2>Data Sources</h2>
+                <h3>Analysis used to generate this deck</h3>
+                <ul><li>SWOT Analysis → Problem/Opportunity slides</li><li>Business Model Canvas → Value prop, Revenue streams</li><li>Market Size Analysis → TAM/SAM/SOM figures</li><li>Competitor Analysis → Competitive landscape</li><li>Financial Projections → Revenue forecasts, Break-even</li><li>Porter's Five Forces → Market dynamics</li></ul>
+                
+            </section>
+            
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            center: false,
+            width: '100%',
+            height: '100%',
+            margin: 0,
+            minScale: 1,
+            maxScale: 1
+        });
+        
+        // Initialize charts after reveal loads
+        Reveal.on('ready', function() {
+            
+            new Chart(document.getElementById('marketChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['TAM', 'SAM', 'SOM'],
+                    datasets: [{
+                        label: 'Market Size ($B)',
+                        data: [120.0, 36.0, 2.4],
+                        backgroundColor: ['#6366f1', '#8b5cf6', '#22d3ee'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: 'rgba(255,255,255,0.7)' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'rgba(255,255,255,0.9)', font: { size: 14 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            
+
+            new Chart(document.getElementById('financialChart'), {
+                type: 'line',
+                data: {
+                    labels: ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [300000.0, 336000.0, 376320.0, 413952.0, 455347.0],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#6366f1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: 'rgba(255,255,255,0.7)' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'rgba(255,255,255,0.9)' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            
+
+            new Chart(document.getElementById('fundsChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ["Product", "Growth", "Team"],
+                    datasets: [{
+                        data: [50, 30, 20],
+                        backgroundColor: ["#6366f1", "#8b5cf6", "#22d3ee"],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: 'rgba(255,255,255,0.9)' }
+                        }
+                    }
+                }
+            });
+            
+        });
+        
+        // Re-render charts on slide change
+        Reveal.on('slidechanged', function(event) {
+            // Charts are already rendered, this just ensures they display
+        });
+    </script>
+</body>
+</html>

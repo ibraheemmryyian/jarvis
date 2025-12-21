@@ -1,0 +1,42 @@
+{
+  "name": "crm-dashboard",
+  "version": "1.0.0",
+  "description": "A modern CRM with dark theme using React",
+  "main": "index.js",
+  "scripts": {
+    "start": "babel src/index.js --out-file public/index.js && cd public && python3 -m http.server 8080",
+    "build": "babel src/index.js --out-file public/index.js && cd public && python3 -m http.server 8080"
+  },
+  "keywords": [
+    "crm",
+    "react",
+    "dark-theme",
+    "modern"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.24.0"
+  }
+}
+
+[
+  {
+    "id": 1,
+    "title": "Meeting Notes",
+    "content": "Discussed Q4 goals and resource allocation.",
+    "createdAt": "2025-12-15T10:30:00Z"
+  },
+  {
+    "id": 2,
+    "title": "Project Update",
+    "content": "Backend API is ready for integration.",
+    "createdAt": "2025-12-14T14:20:00Z"
+  }
+]
