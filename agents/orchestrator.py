@@ -242,7 +242,7 @@ class Orchestrator:
         
         # Score each category
         scores = {}
-        for category, info in self.AGENT_CATEGORIES.items():
+        for category, info in AGENT_CATEGORIES.items():
             score = sum(1 for kw in info["keywords"] if kw in request_lower)
             scores[category] = score
         

@@ -56,3 +56,7 @@ df['Designation'] = df['Designation'].str.strip()
 def get_sustainability_score(initiatives):
     if pd.isna(initiatives) or initiative
 <!-- /ENTRY -->
+<!-- ENTRY: 2025-12-21 16:02:57 -->
+### Generate personalized outreach templates
+[Error: LM Studio not running. Start it and load a model.]
+<!-- /ENTRY -->

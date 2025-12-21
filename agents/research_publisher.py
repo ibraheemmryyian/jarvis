@@ -66,6 +66,12 @@ OUTPUT QUALITY:
 - Appendix organization
 - Word count awareness
 
+CRITICAL: CODE IMPLEMENTATION
+- You MUST write the full code for any file you reference.
+- Output the Python code blocks (e.g., `simulation.py`) FIRST.
+- THEN write the paper referencing these files.
+- Do NOT embed the code *text* inside the paper's markdown, but you MUST output the *files* themselves via code blocks.
+
 Always maintain objectivity and cite sources properly."""
     
     # === CITATION FORMATTERS ===

@@ -155,7 +155,8 @@ class DevilsAdvocate:
         }
     
     def _code_critique_prompt(self, code: str, context: str) -> str:
-        return f"""You are a pessimistic code reviewer. Find REAL problems, not nitpicks.
+        return f"""You are a RUTHLESS Senior Code Reviewer. 
+Your goal is to catch LAZY coding and MOCK implementations.
 
 CODE:
 ```
@@ -164,24 +165,23 @@ CODE:
 
 CONTEXT: {context}
 
-Find issues in these categories:
-1. CRITICAL (must fix): Bugs, security holes, data loss risks
-2. MAJOR (should fix): Performance issues, bad patterns, maintainability
-3. MINOR (nice to have): Style, naming, minor improvements
-4. INFO (just FYI): Observations, suggestions
+SPECIFIC CHECKS:
+1. **The "Ghost File" Trap**: Look at "Files Saved This Turn" in CONTEXT. Did the agent claim "code is in simulation.py" but `simulation.py` is NOT in the saved list? -> MARK AS CRITICAL (Hallucination).
+2. **The "Mock" Trap**: Did they use `random.uniform()` or hardcoded values where they should have used real algorithms (e.g., `networkx`, `numpy`)? -> MARK AS CRITICAL.
+3. **The "Placeholder" Trap**: Are there comments like `# TODO: implement` or `pass` in core logic? -> MARK AS CRITICAL.
 
 For each issue, output:
 RISK: [critical/major/minor/info]
 TITLE: [short title]
-DESCRIPTION: [what's wrong]
+DESCRIPTION: [what is wrong]
 FIX: [how to fix]
 ---
 
-Be harsh but practical. Only flag real issues, not style preferences.
-If the code is actually good, say so - don't invent problems."""
+Be HARSH. If they referenced a file they didn't write, FAIL THEM."""
 
     def _plan_critique_prompt(self, plan: str, context: str) -> str:
-        return f"""You are a pessimistic project critic. Challenge this plan.
+        return f"""You are a CYNICAL Project Manager.
+Your job is to find why this plan will fail.
 
 PLAN:
 {plan[:4000]}
@@ -189,19 +189,16 @@ PLAN:
 CONTEXT: {context}
 
 Find issues:
-1. CRITICAL: Impossible tasks, missing critical steps, circular dependencies
-2. MAJOR: Underestimated complexity, missing requirements, risky assumptions
-3. MINOR: Could be better organized, some redundancy
-4. INFO: General observations
+1. CRITICAL: Impossible deadlines, missing verification steps, circular dependencies.
+2. MAJOR: Vague steps ("Implement AI"), missing testing.
+3. MINOR: Redundancy.
 
 For each issue:
 RISK: [critical/major/minor/info]
 TITLE: [short title]
-DESCRIPTION: [what's wrong]
+DESCRIPTION: [what is wrong]
 FIX: [how to fix]
----
-
-Be realistic. Plans are always imperfect - flag what actually matters."""
+---"""
 
     def _business_critique_prompt(self, content: str, context: str) -> str:
         return f"""You are a skeptical business advisor. Poke holes in this.

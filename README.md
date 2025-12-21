@@ -24,6 +24,8 @@ Jarvis is a **locally-running AI workforce platform** with 36 specialized agents
 - 📝 **Content Writing** - Blogs, emails, social media
 - 📅 **Integrations** - Email, Calendar, Git, API
 - 🔒 **100% Local** - Your data never leaves your machine
+- 🛡️ **V3.1 Strict Mode** - "Devils Advocate" validation loop to prevent hallucinations
+- 💾 **Auto-Save Supervisor** - Prevents "Lost in RAM" bugs during long tasks
 - 💰 **$0 API Costs** - Uses local LLM
 
 ---
@@ -62,6 +64,7 @@ python jarvis_ui.py
 | `code_indexer.py` | Smart code search with AST |
 | `code_reviewer.py` | Code analysis and documentation |
 | `qa.py` | Quality assurance and auto-fix |
+| `devils_advocate.py` | Pessimistic reviewer & hallucination checker (V3.1) |
 | `browser_tester.py` | Headless Playwright testing |
 | `visual_qa.py` | Vision-based UI validation |
 | `design_creativity.py` | Unique layouts, banned patterns |

@@ -1,0 +1,10 @@
+{
+  "name": "want-full-autonomous",
+  "slug": "want-full-autonomous",
+  "stack": "vanilla",
+  "category": "frontend",
+  "created": "2025-12-21T22:11:26.828153",
+  "test_framework": null,
+  "entry_point": null,
+  "status": "initialized"
+}

@@ -797,7 +797,64 @@ class AutonomousExecutor:
         
         project_name = self._get_project_name(original_objective)
         project_path = os.path.join(WORKSPACE_DIR, "projects", project_name)
+
+        # Route to specialist
+        routing = self._route_to_specialist(step, task_type, project_path)
         
+        # Execute via specialist
+        if routing["use_specialist"]:
+            response = self._call_specialist(
+                routing["agent"], 
+                step, 
+                project_path, 
+                routing["context"]
+            )
+        else:
+            # Direct LLM execution
+            response = self._call_llm(
+                f"Project: {project_path}\nObjective: {original_objective}\nStep: {step}\n\nContext: {routing['context'][:3000]}"
+            )
+
+        # CRITICAL: Auto-Save Supervisor (Fix for 'Lost in RAM' bug)
+        # Capture artifacts immediately after generation
+        saved_files = self._extract_and_save_code(response, project_name)
+        if saved_files:
+            response += f"\n\n[SYSTEM: Auto-saved {len(saved_files)} files: {', '.join(saved_files)}]"
+        
+        # === DEVILS ADVOCATE REVIEW (The "Integrity Check") ===
+        # Mandatory audit for coding and research tasks
+        if task_type in ["coding", "research"] and "critical" not in step.lower():
+            from .devils_advocate import devils_advocate
+            
+            # Pass the list of ACTUAL saved files to the Devil so it can catch hallucinations
+            reality_context = f"Project: {project_name}\nFiles Saved This Turn: {json.dumps(saved_files) if saved_files else 'NONE'}"
+            
+            critique = devils_advocate.critique(response, content_type=task_type, context=reality_context)
+            
+            if critique["verdict"] in ["FIX_REQUIRED", "REVIEW_REQUIRED"]:
+                self._log(f"😈 DEVIL REJECTED: {len(critique['issues'])} issues found.")
+                
+                # Filter for just the serious ones
+                blockers = [i for i in critique['issues'] if i['risk'] in ['critical', 'major']]
+                
+                if blockers:
+                    feedback = "Your previous work was REJECTED by the Quality Assurance system.\n\n"
+                    for i in blockers:
+                        feedback += f"- [CRITICAL] {i['title']}: {i['description']}\n  Fix: {i['fix']}\n\n"
+                    feedback += "You must RE-WRITE your response to fix these errors immediately.\nDo not apologize, just provide the corrected output."
+                    
+                    self._log("  -> Forcing retry with critique feedback...")
+                    # Retry with feedback
+                    response = self._call_llm(feedback)
+                    
+                    # Auto-save again for the fixed version
+                    new_saved = self._extract_and_save_code(response, project_name)
+                    if new_saved:
+                        response += f"\n\n[SYSTEM: Auto-saved fixes: {', '.join(new_saved)}]"
+            else:
+                self._log("😇 DEVIL APPROVED: No critical issues.")
+
+        return response
         # Ensure project exists
         if not os.path.exists(project_path):
             project_manager.create_project(project_name, stack="vanilla", category="frontend")

@@ -15,47 +15,56 @@ AGENT_CATEGORIES = {
     "FRONTEND": {
         "agents": ["frontend_dev", "uiux", "seo"],
         "context_domains": ["frontend", "decisions"],
-        "description": "Frontend development specialists"
+        "description": "Frontend development specialists",
+        "keywords": ["ui", "frontend", "design", "css", "html", "react", "component", "page", "style", "ux", "animate"]
     },
     "BACKEND": {
         "agents": ["backend_dev", "coder", "ai_ops", "ai_infra"],
         "context_domains": ["backend", "database", "decisions"],
-        "description": "Backend and API development"
+        "description": "Backend and API development",
+        "keywords": ["backend", "api", "database", "server", "sql", "python", "flask", "django", "function", "logic", "auth"]
     },
     "ARCHITECTURE": {
         "agents": ["architect", "product_manager", "strategy", "business_analyst"],
         "context_domains": ["architecture", "decisions", "research"],
-        "description": "System design and product strategy"
+        "description": "System design and product strategy",
+        "keywords": ["architecture", "system", "design", "structure", "plan", "strategy", "product", "roadmap", "concept"]
     },
     "RESEARCH": {
         "agents": ["researcher", "brute_researcher", "academic_research", "synthesizer", "research_publisher"],
         "context_domains": ["research"],
-        "description": "Research and academic writing"
+        "description": "Research and academic writing",
+        "keywords": ["research", "find", "search", "investigate", "academic", "paper", "study", "analysis", "report"]
     },
     "QA": {
         "agents": ["qa_agent", "code_reviewer", "security_auditor", "visual_qa", "devils_advocate"],
         "context_domains": ["qa", "codebase"],
-        "description": "Testing, review, and security"
+        "description": "Testing, review, and security",
+        "keywords": ["test", "qa", "review", "audit", "security", "bug", "fix", "verify", "check"]
     },
     "OPS": {
         "agents": ["ops", "git_agent", "github_agent", "terminal"],
         "context_domains": ["deployment", "decisions"],
-        "description": "DevOps and deployment"
+        "description": "DevOps and deployment",
+        "keywords": ["deploy", "git", "push", "commit", "server", "cloud", "docker", "terminal", "run", "log"]
     },
     "CONTENT": {
         "agents": ["content_writer", "pitch_deck", "document_engine", "seo_specialist"],
         "context_domains": ["content", "research"],
-        "description": "Content creation and documentation"
+        "description": "Content creation and documentation",
+        "keywords": ["write", "content", "blog", "post", "article", "email", "copy", "text", "document", "pdf", "deck"]
     },
     "PRODUCTIVITY": {
         "agents": ["email_agent", "calendar_agent", "slack_agent", "daily_briefing", "notifications"],
         "context_domains": ["productivity"],
-        "description": "Personal productivity tools"
+        "description": "Personal productivity tools",
+        "keywords": ["email", "calendar", "schedule", "meeting", "briefing", "remind", "slack", "message", "productivity"]
     },
     "CORE": {
         "agents": ["router", "autonomous", "orchestrator", "recycler", "memory"],
         "context_domains": ["task_state", "decisions"],
-        "description": "Core orchestration agents"
+        "description": "Core orchestration agents",
+        "keywords": ["router", "autonomous", "orchestrator", "core", "memory", "recycler", "manage", "system"]
     }
 }
 

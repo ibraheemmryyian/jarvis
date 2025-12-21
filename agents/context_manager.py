@@ -80,7 +80,7 @@ class ContextManager:
             "terminal": ["active_task"],
             # Core
             "router": ["active_task"],
-            "autonomous": ["active_task", "task_state", "decisions"],
+            "autonomous": ["active_task", "task_state", "decisions", "user_preferences"],
         }
         
         keys = files_to_load.get(agent_type, ["active_task"])

@@ -23,7 +23,8 @@ CONTEXT_FILES = {
     "codebase_map": os.path.join(CONTEXT_DIR, "codebase_map.md"),
     "decisions": os.path.join(CONTEXT_DIR, "decisions.md"),
     "deployment_log": os.path.join(CONTEXT_DIR, "deployment_log.md"),
-    "documentation": os.path.join(CONTEXT_DIR, "documentation.md"),  # NEW: Docs context
+    "documentation": os.path.join(CONTEXT_DIR, "documentation.md"),
+    "user_preferences": os.path.join(CONTEXT_DIR, "user_preferences.md"),  # NEW: User preferences
 }
 
 # --- Agent Settings ---

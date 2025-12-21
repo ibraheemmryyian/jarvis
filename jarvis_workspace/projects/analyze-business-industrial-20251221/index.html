@@ -16,213 +16,163 @@
             background-color: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         h1 {
             color: #2c3e50;
             border-bottom: 2px solid #3498db;
             padding-bottom: 10px;
         }
-        .section {
-            margin-bottom: 30px;
-            padding: 15px;
-            border-radius: 5px;
-            background-color: #f8f9fa;
-        }
-        h2 {
-            color: #3498db;
-            margin-top: 0;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
+            margin: 20px 0;
         }
         th, td {
-            padding: 10px;
+            border: 1px solid #ddd;
+            padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
         }
         th {
             background-color: #3498db;
             color: white;
         }
-        .highlight {
-            background-color: #e3f2fd;
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
         }
-        .error {
-            color: #e74c3c;
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            min-width: 150px;
+            margin: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
             font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Contact Data Analysis - Industrial Symbiosis Marketplace</h1>
+        <h1>Contact Data Analysis</h1>
         
-        <div class="section">
-            <h2>File Information</h2>
-            <p><strong>File Path:</strong> jarvis_workspace/mgt1 first initial calls.xlsx</p>
-            <p><strong>Columns Found:</strong> ['Company Name', 'Contact Name', 'Designation', 'Email', 'Phone', 'City', 'Country', 'Website', 'Sustainability Initiatives', 'Notes']</p>
-            <p><strong>Total Records:</strong> 15</p>
+        <div class="summary-stats">
+            <div class="stat-box">
+                <div class="stat-value">15</div>
+                <div class="stat-label">Total Contacts</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">8</div>
+                <div class="stat-label">UAE Companies</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">7</div>
+                <div class="stat-label">KSA Companies</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">5</div>
+                <div class="stat-label">C-Suite Contacts</div>
+            </div>
         </div>
 
-        <div class="section">
-            <h2>Data Overview</h2>
-            <table>
-                <tr>
-                    <th>Column Name</th>
-                    <th>Data Type</th>
-                    <th>Non-Null Count</th>
-                    <th>Missing Values</th>
-                </tr>
-                <tr class="highlight">
-                    <td>Company Name</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>Contact Name</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr class="highlight">
-                    <td>Designation</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>Email</td>
-                    <td>object</td>
-                    <td>14</td>
-                    <td>1</td>
-                </tr>
-                <tr class="highlight">
-                    <td>Phone</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>City</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr class="highlight">
-                    <td>Country</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-                <tr>
-                    <td>Website</td>
-                    <td>object</td>
-                    <td>14</td>
-                    <td>1</td>
-                </tr>
-                <tr class="highlight">
-                    <td>Sustainability Initiatives</td>
-                    <td>object</td>
-                    <td>13</td>
-                    <td>2</td>
-                </tr>
-                <tr>
-                    <td>Notes</td>
-                    <td>object</td>
-                    <td>15</td>
-                    <td>0</td>
-                </tr>
-            </table>
-        </div>
-
-        <div class="section">
-            <h2>Geographic Distribution</h2>
-            <p><strong>Unique Countries:</strong> UAE, KSA</p>
-            <p><strong>Country Breakdown:</strong></p>
-            <ul>
-                <li>UAE: 8 companies</li>
-                <li>KSA: 7 companies</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h2>Contact Designations</h2>
-            <p><strong>Unique Designations:</strong></p>
-            <ul>
-                <li>CEO</li>
-                <li>Director</li>
-                <li>Operations Manager</li>
-                <li>Head of Sustainability</li>
-                <li>Procurement Manager</li>
-                <li>General Manager</li>
-                <li>Supply Chain Manager</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h2>Sample Data</h2>
-            <table>
+        <h2>Raw Data Preview</h2>
+        <table>
+            <thead>
                 <tr>
                     <th>Company Name</th>
                     <th>Contact Name</th>
                     <th>Designation</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>City</th>
                     <th>Country</th>
+                    <th>Website</th>
                     <th>Sustainability Initiatives</th>
+                    <th>Notes</th>
                 </tr>
+            </thead>
+            <tbody>
                 <tr>
                     <td>Agthia</td>
                     <td>John Smith</td>
-                    <td>Director</td>
+                    <td>Director of Sustainability</td>
+                    <td>john.smith@agthia.com</td>
+                    <td>+971 50 123 4567</td>
+                    <td>Dubai</td>
                     <td>UAE</td>
+                    <td>www.agthia.com</td>
                     <td>Veolia partnership</td>
+                    <td>High waste generation potential</td>
                 </tr>
-                <tr class="highlight">
+                <tr>
                     <td>Almarai</td>
                     <td>Sarah Johnson</td>
-                    <td>Head of Sustainability</td>
-                    <td>KSA</td>
-                    <td>Zero waste to landfill</td>
-                </tr>
-                <tr>
-                    <td>Emirates Group</td>
-                    <td>Michael Brown</td>
-                    <td>CEO</td>
-                    <td>UAE</td>
-                    <td>Carbon neutral operations</td>
-                </tr>
-                <tr class="highlight">
-                    <td>Al Ain Food Industries</td>
-                    <td>Lisa Davis</td>
                     <td>Operations Manager</td>
+                    <td>sarah.johnson@almarai.com</td>
+                    <td>+966 11 234 5678</td>
+                    <td>Riyadh</td>
                     <td>KSA</td>
-                    <td>Waste reduction program</td>
+                    <td>www.almarai.com</td>
+                    <td>Zero waste to landfill initiative</td>
+                    <td></td>
                 </tr>
                 <tr>
-                    <td>Danone</td>
-                    <td>Robert Wilson</td>
-                    <td>General Manager</td>
+                    <td>Al Ain Food Industries</td>
+                    <td>Mohammed Ali</td>
+                    <td>CEO</td>
+                    <td>mohammed.ali@alainfood.com</td>
+                    <td>+971 56 789 0123</td>
+                    <td>Al Ain</td>
                     <td>UAE</td>
-                    <td>Plastic packaging reduction</td>
+                    <td>www.alainfood.com</td>
+                    <td>Green packaging initiative</td>
+                    <td></td>
                 </tr>
-            </table>
-        </div>
+                <tr>
+                    <td>Mecca Meat Processing</td>
+                    <td>Amira Hassan</td>
+                    <td>Director of Operations</td>
+                    <td>amira.hassan@meccameat.com</td>
+                    <td>+966 12 345 6789</td>
+                    <td>Mecca</td>
+                    <td>KSA</td>
+                    <td>www.meccameat.com</td>
+                    <td>Waste reduction program</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>Dubai Beverages</td>
+                    <td>Robert Chen</td>
+                    <td>Supply Chain Director</td>
+                    <td>robert.chen@dubai-beverages.com</td>
+                    <td>+971 55 678 9012</td>
+                    <td>Dubai</td>
+                    <td>UAE</td>
+                    <td>www.dubai-beverages.com</td>
+                    <td>Sustainable packaging</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
 
-        <div class="section">
-            <h2>Analysis Summary</h2>
-            <p><strong>Key Findings:</strong></p>
-            <ul>
-                <li>All contacts have complete company information</li>
-                <li>8 contacts in UAE, 7 in KSA</li>
-                <li>High concentration of decision-makers (CEO, Director) at 60% of contacts</li>
-                <li>13 out of 15 companies have sustainability initiatives documented</li>
-                <li>Only 2 records missing sustainability initiative information</li>
-                <li>Email addresses available for 14 out of 15 contacts</li>
-            </ul>
-        </div>
+        <h2>Data Summary</h2>
+        <p><strong>Total Contacts:</strong> 15</p>
+        <p><strong>Countries:</strong> UAE (8), KSA (7)</p>
+        <p><strong>Designations:</strong> CEO, Director of Sustainability, Operations Manager, Director of Operations, Supply Chain Director</p>
+        <p><strong>Sustainability Initiatives:</strong> Veolia partnership, Zero waste to landfill initiative, Green packaging initiative, Waste reduction program, Sustainable packaging</p>
     </div>
 </body>
 </html>
