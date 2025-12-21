@@ -37,17 +37,20 @@ def main():
     
     **Your Mission**:
     1. **Concept**: Refine the "ATRA-G" concept.
-    2. **Real Science**: You MUST use `networkx` to generate a REAL graph (e.g., Erdos-Renyi) and calculate REAL Centrality. Do NOT use `random.uniform()`.
-    3. **Code Structure**: Create a clean project structure.
+    2. **Real Science (Advanced)**:
+       - **Robustness**: Test on THREE topologies: Erdős–Rényi, Barabasi-Albert (Scale-Free), and Watts-Strogatz (Small-World).
+       - **Ablation Study**: You MUST run a Control Group (Random Allocation) vs Experimental Group (ATRA-G) to prove the "Topology" term actually matters.
+       - **Sensitivity**: Vary the alpha/beta parameters to find the optimal configuration.
+    3. **Code Structure**:
        - `src/simulation.py`: The core logic (networkx + agents).
-       - `src/main.py`: The entry point.
+       - `src/main.py`: The entry point that runs all 3 topologies.
        - `paper.md`: The report.
-    4. **Execute**: Run the simulation code to generate REAL data (latency, utilization).
+    4. **Execute**: Run the simulation code to generate REAL data.
     5. **Publish**: Write the paper using the REAL data.
 
     **CRITICAL RULES**:
-    - NO MOCK DATA. I will audit your code.
-    - NO EMBEDDED CODE in the paper. The paper should reference the files.
+    - NO MOCK DATA. The "Devils Advocate" is watching. If you fake it, you fail.
+    - OUTPUT THE CODE BLOCKS. You must output the full python code for `simulation.py` so it can be saved.
     - SAVE YOUR WORK.
     """
     
