@@ -36,8 +36,9 @@ AGENT_TEMPS = {
 }
 
 # --- Token Limits (Adaptive for Speed) ---
-# Smaller limits for simple tasks, larger for complex code generation
-MAX_CONTEXT_TOKENS = 132000
+# SPEED FIX: Reduced from 132K to 16K - every token has to attend to ALL context tokens
+# 132K = 2-6 t/s, 16K = 30-50 t/s on same GPU
+MAX_CONTEXT_TOKENS = 16384  # 16K is enough for most tasks, MUCH faster
 
 # Adaptive output limits by task type
 TOKEN_LIMITS = {

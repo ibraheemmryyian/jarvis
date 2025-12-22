@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/LLM-Local-green.svg" alt="LLM">
-  <img src="https://img.shields.io/badge/Agents-36-purple.svg" alt="Agents">
+  <img src="https://img.shields.io/badge/Agents-57-purple.svg" alt="Agents">
   <img src="https://img.shields.io/badge/API%20Cost-$0-success.svg" alt="Cost">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
@@ -14,7 +14,7 @@
 
 ## ✨ What is Jarvis?
 
-Jarvis is a **locally-running AI workforce platform** with 36 specialized agents. It's not a chatbot - it's a team of AI workers that can:
+Jarvis is a **locally-running AI workforce platform** with 57 specialized agents. It's not a chatbot - it's a team of AI workers that can:
 
 - 🗣️ **Voice Interaction** - "Hey Jarvis" wake word, natural conversation
 - 🤖 **Autonomous Execution** - Multi-step tasks with self-healing
@@ -56,7 +56,7 @@ python jarvis_ui.py
 
 ---
 
-## 🏗️ Architecture: 36 Specialized Agents
+## 🏗️ Architecture: 57 Specialized Agents
 
 ### Core Infrastructure
 | Agent | Purpose |
