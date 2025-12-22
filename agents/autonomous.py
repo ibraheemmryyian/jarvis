@@ -776,6 +776,58 @@ class AutonomousExecutor:
             self._log(f"[Preview] Failed to capture: {e}")
             return None
     
+    def _audit_dependencies(self, project_path: str, saved_files: list) -> list:
+        """
+        Scan saved Python files for local imports and verify they exist.
+        Returns a list of missing module names.
+        """
+        import re
+        missing = []
+        standard_libs = {'os', 'sys', 'json', 'time', 'datetime', 're', 'random', 
+                         'math', 'collections', 'itertools', 'functools', 'typing',
+                         'pathlib', 'subprocess', 'threading', 'multiprocessing',
+                         'requests', 'numpy', 'pandas', 'networkx', 'matplotlib'}
+        
+        for filename in saved_files:
+            if not filename.endswith('.py'):
+                continue
+            
+            # Find the file path
+            filepath = None
+            for root, dirs, files in os.walk(project_path):
+                if filename in files:
+                    filepath = os.path.join(root, filename)
+                    break
+            
+            if not filepath or not os.path.exists(filepath):
+                continue
+            
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Parse import statements
+                # Match: import X, from X import Y
+                import_pattern = r'^(?:from\s+(\w+)|import\s+(\w+))'
+                for match in re.finditer(import_pattern, content, re.MULTILINE):
+                    module_name = match.group(1) or match.group(2)
+                    
+                    # Skip standard library and known packages
+                    if module_name in standard_libs:
+                        continue
+                    
+                    # Check if local module exists
+                    potential_path = os.path.join(project_path, f"{module_name}.py")
+                    src_path = os.path.join(project_path, "src", f"{module_name}.py")
+                    
+                    if not os.path.exists(potential_path) and not os.path.exists(src_path):
+                        if module_name not in missing:
+                            missing.append(module_name)
+            except Exception as e:
+                self._log(f"[DependencyAudit] Error parsing {filename}: {e}")
+        
+        return missing
+    
     def _get_project_name(self, objective: str) -> str:
         """Generate a project folder name from the objective."""
         import re
@@ -853,6 +905,25 @@ class AutonomousExecutor:
                         response += f"\n\n[SYSTEM: Auto-saved fixes: {', '.join(new_saved)}]"
             else:
                 self._log("😇 DEVIL APPROVED: No critical issues.")
+        
+        # === DEPENDENCY AUDITOR (The "Lab Work" Enforcer) ===
+        # Check if saved Python files import modules that don't exist
+        if saved_files:
+            missing_deps = self._audit_dependencies(project_path, saved_files)
+            if missing_deps:
+                self._log(f"🔬 DEPENDENCY AUDIT: {len(missing_deps)} missing modules detected: {missing_deps}")
+                # Force the agent to write these modules NOW
+                for missing_module in missing_deps:
+                    dep_prompt = f"""CRITICAL: Your code imports '{missing_module}' but this file does not exist.
+You MUST implement '{missing_module}.py' NOW with all the functions your code expects.
+Project path: {project_path}
+
+Output the full Python code block for '{missing_module}.py'. No explanations, just the code."""
+                    self._log(f"  -> Forcing implementation of: {missing_module}.py")
+                    dep_response = self._call_llm(dep_prompt)
+                    new_saved = self._extract_and_save_code(dep_response, self._get_project_name(original_objective))
+                    if new_saved:
+                        response += f"\\n\\n[SYSTEM: Auto-generated dependency: {', '.join(new_saved)}]"
 
         return response
         # Ensure project exists
