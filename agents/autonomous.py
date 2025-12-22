@@ -828,6 +828,108 @@ class AutonomousExecutor:
         
         return missing
     
+    def _validate_execution(self, project_path: str, saved_files: list) -> dict:
+        """
+        V3.3: Post-Execution Validation
+        Attempts to run saved Python files and captures any errors.
+        Returns dict with {filename: error_message} for files that failed.
+        """
+        import subprocess
+        errors = {}
+        
+        for filename in saved_files:
+            if not filename.endswith('.py'):
+                continue
+            
+            # Find the file path
+            filepath = None
+            for root, dirs, files in os.walk(project_path):
+                if filename in files:
+                    filepath = os.path.join(root, filename)
+                    break
+            
+            if not filepath or not os.path.exists(filepath):
+                continue
+            
+            try:
+                # Try to syntax-check the file (compile only, don't execute)
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    code = f.read()
+                
+                # Compile to check syntax
+                compile(code, filepath, 'exec')
+                
+                # Try to import (catches missing dependencies)
+                module_name = filename.replace('.py', '')
+                result = subprocess.run(
+                    ['python', '-c', f'import sys; sys.path.insert(0, r"{project_path}"); import {module_name}'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    cwd=project_path
+                )
+                
+                if result.returncode != 0:
+                    error_msg = result.stderr.strip()
+                    # Extract the key error line
+                    error_lines = [l for l in error_msg.split('\n') if 'Error' in l or 'error' in l]
+                    errors[filename] = error_lines[-1] if error_lines else error_msg[-500:]
+                    self._log(f"[Validation] ❌ {filename}: {errors[filename][:100]}")
+                else:
+                    self._log(f"[Validation] ✅ {filename}: OK")
+                    
+            except SyntaxError as e:
+                errors[filename] = f"SyntaxError: {e.msg} at line {e.lineno}"
+                self._log(f"[Validation] ❌ {filename}: SyntaxError at line {e.lineno}")
+            except subprocess.TimeoutExpired:
+                errors[filename] = "Timeout: Code took too long to import"
+                self._log(f"[Validation] ❌ {filename}: Timeout")
+            except Exception as e:
+                errors[filename] = f"ValidationError: {str(e)[:200]}"
+                self._log(f"[Validation] ❌ {filename}: {e}")
+        
+        return errors
+    
+    def _multi_perspective_review(self, code: str, filename: str) -> list:
+        """
+        V3.3: Multi-Angle Code Review
+        Reviews code from multiple perspectives: correctness, security, performance.
+        Returns list of issues found.
+        """
+        issues = []
+        
+        # Perspective 1: Correctness (via Devils Advocate)
+        from .devils_advocate import devils_advocate
+        critique = devils_advocate.critique(code, content_type="code", context=f"File: {filename}")
+        if critique.get("issues"):
+            issues.extend([{"perspective": "correctness", **i} for i in critique["issues"]])
+        
+        # Perspective 2: Security (quick static checks)
+        security_red_flags = [
+            ("eval(", "CRITICAL: Use of eval() is dangerous"),
+            ("exec(", "CRITICAL: Use of exec() is dangerous"),
+            ("__import__", "WARNING: Dynamic import detected"),
+            ("pickle.load", "WARNING: Pickle deserialization can be unsafe"),
+            ("shell=True", "WARNING: Shell injection risk with subprocess"),
+            ("os.system(", "WARNING: Prefer subprocess over os.system"),
+        ]
+        for pattern, warning in security_red_flags:
+            if pattern in code:
+                issues.append({"perspective": "security", "title": warning, "risk": "major"})
+        
+        # Perspective 3: Performance (basic checks)
+        perf_issues = []
+        if "for " in code and "append(" in code:
+            # Suggest list comprehension
+            perf_issues.append("Consider list comprehension instead of for+append")
+        if code.count("for ") > 5:
+            perf_issues.append("Multiple nested loops detected - consider optimization")
+        
+        for issue in perf_issues:
+            issues.append({"perspective": "performance", "title": issue, "risk": "minor"})
+        
+        return issues
+    
     def _get_project_name(self, objective: str) -> str:
         """Generate a project folder name from the objective."""
         import re
@@ -836,6 +938,597 @@ class AutonomousExecutor:
         keywords = [w for w in words if len(w) > 3 and w not in ['build', 'create', 'make', 'with', 'that', 'this', 'from', 'using']]
         name = '-'.join(keywords[:3]) if keywords else 'project'
         return name.replace(' ', '-')[:30]
+    
+    def _scaffold_project(self, project_path: str, project_type: str = "research") -> dict:
+        """
+        V3.4: Create proper project structure with organized folders.
+        Returns dict with created paths.
+        """
+        structure = {
+            "research": ["src", "tests", "data", "docs", "figures"],
+            "webapp": ["src", "public", "components", "styles", "tests"],
+            "api": ["src", "routes", "models", "tests", "docs"],
+            "default": ["src", "tests", "docs"]
+        }
+        
+        folders = structure.get(project_type, structure["default"])
+        created = {"folders": [], "files": []}
+        
+        for folder in folders:
+            folder_path = os.path.join(project_path, folder)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path, exist_ok=True)
+                created["folders"].append(folder)
+                self._log(f"📁 SCAFFOLD: Created {folder}/")
+        
+        # Create README.md
+        readme_path = os.path.join(project_path, "README.md")
+        if not os.path.exists(readme_path):
+            readme_content = f"""# Project: {os.path.basename(project_path)}
+
+## Structure
+```
+{chr(10).join('├── ' + f + '/' for f in folders)}
+├── requirements.txt
+└── main.py
+```
+
+## Setup
+```bash
+pip install -r requirements.txt
+python main.py
+```
+
+## Generated by Jarvis Autonomous System
+"""
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(readme_content)
+            created["files"].append("README.md")
+            self._log("📁 SCAFFOLD: Created README.md")
+        
+        return created
+    
+    def _install_dependencies(self, project_path: str, saved_files: list) -> list:
+        """
+        V3.4: Auto-install external dependencies found in Python files.
+        Returns list of installed packages.
+        """
+        import subprocess
+        import re
+        
+        # Common external packages (not in stdlib)
+        external_packages = {
+            'numpy': 'numpy', 'np': 'numpy',
+            'pandas': 'pandas', 'pd': 'pandas',
+            'matplotlib': 'matplotlib', 'plt': 'matplotlib',
+            'networkx': 'networkx', 'nx': 'networkx',
+            'requests': 'requests',
+            'scipy': 'scipy',
+            'sklearn': 'scikit-learn',
+            'torch': 'torch',
+            'tensorflow': 'tensorflow', 'tf': 'tensorflow',
+            'flask': 'flask',
+            'fastapi': 'fastapi',
+            'pytest': 'pytest',
+        }
+        
+        found_packages = set()
+        
+        for filename in saved_files:
+            if not filename.endswith('.py'):
+                continue
+            
+            # Find the file
+            for root, dirs, files in os.walk(project_path):
+                if filename in files:
+                    filepath = os.path.join(root, filename)
+                    try:
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        # Find imports
+                        import_pattern = r'^(?:from\s+(\w+)|import\s+(\w+))'
+                        for match in re.finditer(import_pattern, content, re.MULTILINE):
+                            module = match.group(1) or match.group(2)
+                            if module in external_packages:
+                                found_packages.add(external_packages[module])
+                    except:
+                        pass
+                    break
+        
+        installed = []
+        for package in found_packages:
+            try:
+                result = subprocess.run(
+                    ['pip', 'install', package, '--quiet'],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                if result.returncode == 0:
+                    installed.append(package)
+                    self._log(f"📦 DEPS: Installed {package}")
+            except Exception as e:
+                self._log(f"📦 DEPS: Failed to install {package}: {e}")
+        
+        # Generate requirements.txt
+        if installed:
+            req_path = os.path.join(project_path, "requirements.txt")
+            with open(req_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(sorted(installed)))
+            self._log(f"📦 DEPS: Generated requirements.txt with {len(installed)} packages")
+        
+        return installed
+    
+    def _inject_entry_point(self, project_path: str, main_file: str = "main.py") -> bool:
+        """
+        V3.4: Ensure main.py has an if __name__ == '__main__' block.
+        Returns True if modified.
+        """
+        filepath = os.path.join(project_path, main_file)
+        if not os.path.exists(filepath):
+            return False
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Check if entry point exists
+            if 'if __name__' in content:
+                return False
+            
+            # Find the main class or function to call
+            import re
+            
+            # Look for Simulation class or main function
+            main_call = ""
+            if 'class Simulation' in content:
+                main_call = '''
+if __name__ == "__main__":
+    # Auto-generated entry point
+    sim = Simulation(topology_type="ER", num_agents=50, alpha=0.7, beta=0.3)
+    sim.run(iterations=100)
+    print("Results:", sim.collect_metrics())
+'''
+            elif 'def main(' in content:
+                main_call = '''
+if __name__ == "__main__":
+    main()
+'''
+            else:
+                # Generic entry point
+                main_call = '''
+if __name__ == "__main__":
+    print("Project initialized. Add your entry point logic here.")
+'''
+            
+            # Append entry point
+            with open(filepath, 'a', encoding='utf-8') as f:
+                f.write(main_call)
+            
+            self._log(f"🚀 ENTRY: Injected entry point into {main_file}")
+            return True
+            
+        except Exception as e:
+            self._log(f"🚀 ENTRY: Failed to inject entry point: {e}")
+            return False
+    
+    def _run_and_capture_output(self, project_path: str, script: str = "main.py", timeout: int = 120) -> dict:
+        """
+        V3.5: Run a Python script and capture its output (stdout, stderr, JSON).
+        Returns dict with stdout, stderr, json_data, success.
+        """
+        import subprocess
+        import json
+        
+        filepath = os.path.join(project_path, script)
+        if not os.path.exists(filepath):
+            return {"success": False, "error": f"{script} not found"}
+        
+        try:
+            result = subprocess.run(
+                ['python', script],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=project_path
+            )
+            
+            output = {
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
+                "json_data": None
+            }
+            
+            # Try to extract JSON from stdout
+            if result.stdout:
+                try:
+                    # Look for JSON in output (between { and })
+                    import re
+                    json_match = re.search(r'\{[^{}]*\}', result.stdout, re.DOTALL)
+                    if json_match:
+                        output["json_data"] = json.loads(json_match.group())
+                except:
+                    pass
+            
+            # Also check for results file
+            results_file = os.path.join(project_path, "simulation_results.json")
+            if os.path.exists(results_file):
+                with open(results_file, 'r') as f:
+                    output["json_data"] = json.load(f)
+            
+            self._log(f"▶️ RUN: {script} {'✅' if output['success'] else '❌'}")
+            if output["json_data"]:
+                self._log(f"   📊 Captured JSON data with {len(output['json_data'])} keys")
+            
+            return output
+            
+        except subprocess.TimeoutExpired:
+            return {"success": False, "error": f"Timeout after {timeout}s"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def _generate_figures(self, project_path: str, data: dict) -> list:
+        """
+        V3.5: Auto-generate matplotlib figures from simulation data.
+        Saves figures to figures/ directory.
+        Returns list of generated figure filenames.
+        """
+        figures_dir = os.path.join(project_path, "figures")
+        os.makedirs(figures_dir, exist_ok=True)
+        
+        generated = []
+        
+        try:
+            import matplotlib
+            matplotlib.use('Agg')  # Non-interactive backend
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            # Figure 1: Bar chart of efficiencies by topology
+            if isinstance(data, dict) and any('efficiency' in str(v) for v in data.values()):
+                fig, ax = plt.subplots(figsize=(10, 6))
+                
+                topologies = list(data.keys())
+                efficiencies = [v.get('avg_efficiency', v.get('efficiency', 0)) 
+                               for v in data.values() if isinstance(v, dict)]
+                
+                if efficiencies:
+                    ax.bar(topologies, efficiencies, color=['#3498db', '#2ecc71', '#e74c3c'])
+                    ax.set_xlabel('Network Topology')
+                    ax.set_ylabel('Mean Efficiency')
+                    ax.set_title('ATRA-G Performance Across Topologies')
+                    ax.set_ylim(0, 1.1)
+                    
+                    fig_path = os.path.join(figures_dir, "efficiency_comparison.png")
+                    plt.savefig(fig_path, dpi=150, bbox_inches='tight')
+                    plt.close()
+                    generated.append("efficiency_comparison.png")
+                    self._log("📊 FIGURE: Generated efficiency_comparison.png")
+            
+            # Figure 2: Variance comparison
+            if isinstance(data, dict):
+                variances = [v.get('avg_variance', v.get('variance', 0)) 
+                            for v in data.values() if isinstance(v, dict)]
+                
+                if variances and any(v > 0 for v in variances):
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    topologies = list(data.keys())
+                    ax.bar(topologies, variances, color=['#9b59b6', '#f39c12', '#1abc9c'])
+                    ax.set_xlabel('Network Topology')
+                    ax.set_ylabel('Variance')
+                    ax.set_title('Resource Allocation Variance by Topology')
+                    
+                    fig_path = os.path.join(figures_dir, "variance_comparison.png")
+                    plt.savefig(fig_path, dpi=150, bbox_inches='tight')
+                    plt.close()
+                    generated.append("variance_comparison.png")
+                    self._log("📊 FIGURE: Generated variance_comparison.png")
+                    
+        except ImportError:
+            self._log("📊 FIGURE: matplotlib not available, skipping figure generation")
+        except Exception as e:
+            self._log(f"📊 FIGURE: Error generating figures: {e}")
+        
+        return generated
+    
+    def _enforce_paper_length(self, prompt: str, min_words: int = 3000) -> str:
+        """
+        V3.5: Modify paper generation prompt to enforce minimum length.
+        """
+        length_enforcement = f"""
+
+CRITICAL LENGTH REQUIREMENT:
+- You MUST write a COMPLETE academic paper with AT LEAST {min_words} words.
+- Do NOT write an outline or summary.
+- Each section MUST have multiple full paragraphs.
+- Include: Abstract (200+ words), Introduction (500+ words), Methods (800+ words), 
+  Results (600+ words), Discussion (500+ words), Conclusion (200+ words).
+- Use proper academic language and cite all figures.
+- If you write less than {min_words} words, your paper will be REJECTED.
+
+"""
+        return length_enforcement + prompt
+    
+    def _export_to_docx(self, project_path: str, markdown_file: str = "paper.md") -> str:
+        """
+        V3.5: Convert markdown to DOCX format for academic submission.
+        Returns path to generated DOCX or empty string on failure.
+        """
+        md_path = os.path.join(project_path, markdown_file)
+        
+        # Also check in src/ and docs/
+        if not os.path.exists(md_path):
+            md_path = os.path.join(project_path, "src", markdown_file)
+        if not os.path.exists(md_path):
+            md_path = os.path.join(project_path, "docs", markdown_file)
+        if not os.path.exists(md_path):
+            # Try generated.markdown
+            md_path = os.path.join(project_path, "src", "generated.markdown")
+        
+        if not os.path.exists(md_path):
+            self._log("📄 DOCX: No markdown file found to convert")
+            return ""
+        
+        try:
+            from docx import Document
+            from docx.shared import Inches, Pt
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            
+            # Read markdown
+            with open(md_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            doc = Document()
+            
+            # Process markdown line by line
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.startswith('# '):
+                    # Title
+                    p = doc.add_heading(line[2:], level=0)
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                elif line.startswith('## '):
+                    doc.add_heading(line[3:], level=1)
+                elif line.startswith('### '):
+                    doc.add_heading(line[4:], level=2)
+                elif line.startswith('- '):
+                    doc.add_paragraph(line[2:], style='List Bullet')
+                else:
+                    doc.add_paragraph(line)
+            
+            # Save DOCX
+            docx_path = md_path.replace('.md', '.docx').replace('.markdown', '.docx')
+            doc.save(docx_path)
+            
+            self._log(f"📄 DOCX: Exported to {os.path.basename(docx_path)}")
+            return docx_path
+            
+        except ImportError:
+            self._log("📄 DOCX: python-docx not installed, attempting install...")
+            import subprocess
+            subprocess.run(['pip', 'install', 'python-docx', '--quiet'], capture_output=True)
+            # Retry
+            try:
+                from docx import Document
+                return self._export_to_docx(project_path, markdown_file)
+            except:
+                self._log("📄 DOCX: Failed to install python-docx")
+                return ""
+        except Exception as e:
+            self._log(f"📄 DOCX: Error exporting: {e}")
+            return ""
+    
+    def _find_available_port(self, start_port: int = 3000, max_attempts: int = 20) -> int:
+        """
+        V3.6: Find an available port for dev server.
+        """
+        import socket
+        for port in range(start_port, start_port + max_attempts):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('localhost', port))
+                    return port
+            except OSError:
+                continue
+        return start_port + max_attempts  # Fallback
+    
+    def _start_dev_server(self, project_path: str, server_type: str = "auto") -> dict:
+        """
+        V3.6: Start a development server for the project.
+        Returns dict with pid, port, url, type.
+        """
+        import subprocess
+        
+        # Detect server type
+        if server_type == "auto":
+            if os.path.exists(os.path.join(project_path, "package.json")):
+                server_type = "npm"
+            elif os.path.exists(os.path.join(project_path, "index.html")):
+                server_type = "python"
+            else:
+                server_type = "python"
+        
+        port = self._find_available_port()
+        
+        try:
+            if server_type == "npm":
+                # Check if node_modules exists
+                if not os.path.exists(os.path.join(project_path, "node_modules")):
+                    self._log("🔧 DEV: Running npm install...")
+                    subprocess.run(['npm', 'install'], cwd=project_path, capture_output=True)
+                
+                # Start dev server
+                process = subprocess.Popen(
+                    ['npm', 'run', 'dev', '--', '--port', str(port)],
+                    cwd=project_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True
+                )
+            else:
+                # Python HTTP server
+                process = subprocess.Popen(
+                    ['python', '-m', 'http.server', str(port)],
+                    cwd=project_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+            
+            url = f"http://localhost:{port}"
+            self._log(f"🚀 DEV: Server started at {url} (PID: {process.pid})")
+            
+            return {
+                "success": True,
+                "pid": process.pid,
+                "port": port,
+                "url": url,
+                "type": server_type
+            }
+            
+        except Exception as e:
+            self._log(f"🚀 DEV: Failed to start server - {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _deploy_netlify(self, project_path: str, prod: bool = False) -> dict:
+        """
+        V3.6: Deploy project to Netlify using CLI.
+        """
+        import subprocess
+        
+        # Check if Netlify CLI is installed
+        try:
+            result = subprocess.run(['netlify', '--version'], capture_output=True, text=True)
+            if result.returncode != 0:
+                self._log("📦 Installing Netlify CLI...")
+                subprocess.run(['npm', 'install', '-g', 'netlify-cli'], capture_output=True)
+        except FileNotFoundError:
+            self._log("📦 Installing Netlify CLI...")
+            subprocess.run(['npm', 'install', '-g', 'netlify-cli'], capture_output=True)
+        
+        # Determine build directory
+        build_dir = project_path
+        for candidate in ['dist', 'build', 'public', '.']:
+            candidate_path = os.path.join(project_path, candidate)
+            if os.path.exists(candidate_path) and os.path.isdir(candidate_path):
+                build_dir = candidate_path
+                break
+        
+        try:
+            cmd = ['netlify', 'deploy', '--dir', build_dir]
+            if prod:
+                cmd.append('--prod')
+            
+            result = subprocess.run(
+                cmd,
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            # Extract URL from output
+            import re
+            url_match = re.search(r'(https://[^\s]+\.netlify\.app)', result.stdout)
+            deploy_url = url_match.group(1) if url_match else None
+            
+            if deploy_url:
+                self._log(f"🌐 NETLIFY: Deployed to {deploy_url}")
+                return {"success": True, "url": deploy_url, "prod": prod}
+            else:
+                self._log(f"🌐 NETLIFY: Deploy output - {result.stdout[:200]}")
+                return {"success": False, "output": result.stdout, "error": result.stderr}
+                
+        except Exception as e:
+            self._log(f"🌐 NETLIFY: Deploy failed - {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _deploy_vercel(self, project_path: str, prod: bool = False) -> dict:
+        """
+        V3.6: Deploy project to Vercel using CLI.
+        """
+        import subprocess
+        
+        # Check if Vercel CLI is installed
+        try:
+            result = subprocess.run(['vercel', '--version'], capture_output=True, text=True)
+            if result.returncode != 0:
+                self._log("📦 Installing Vercel CLI...")
+                subprocess.run(['npm', 'install', '-g', 'vercel'], capture_output=True)
+        except FileNotFoundError:
+            self._log("📦 Installing Vercel CLI...")
+            subprocess.run(['npm', 'install', '-g', 'vercel'], capture_output=True)
+        
+        try:
+            cmd = ['vercel', '--yes']  # --yes for non-interactive
+            if prod:
+                cmd.append('--prod')
+            
+            result = subprocess.run(
+                cmd,
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=180
+            )
+            
+            # Extract URL from output
+            import re
+            url_match = re.search(r'(https://[^\s]+\.vercel\.app)', result.stdout)
+            deploy_url = url_match.group(1) if url_match else None
+            
+            if deploy_url:
+                self._log(f"▲ VERCEL: Deployed to {deploy_url}")
+                return {"success": True, "url": deploy_url, "prod": prod}
+            else:
+                self._log(f"▲ VERCEL: Deploy output - {result.stdout[:200]}")
+                return {"success": False, "output": result.stdout, "error": result.stderr}
+                
+        except Exception as e:
+            self._log(f"▲ VERCEL: Deploy failed - {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _start_project(self, project_path: str, mode: str = "dev") -> dict:
+        """
+        V3.6: Smart project starter - detects project type and runs appropriately.
+        Modes: 'dev' (local server), 'run' (execute main.py), 'deploy' (Netlify/Vercel)
+        """
+        project_name = os.path.basename(project_path)
+        
+        # Detect project type
+        has_package_json = os.path.exists(os.path.join(project_path, "package.json"))
+        has_main_py = os.path.exists(os.path.join(project_path, "main.py"))
+        has_index_html = os.path.exists(os.path.join(project_path, "index.html"))
+        
+        if mode == "dev":
+            if has_package_json:
+                return self._start_dev_server(project_path, "npm")
+            elif has_index_html:
+                return self._start_dev_server(project_path, "python")
+            else:
+                return {"success": False, "error": "No web project detected"}
+        
+        elif mode == "run":
+            if has_main_py:
+                return self._run_and_capture_output(project_path, "main.py")
+            else:
+                return {"success": False, "error": "No main.py found"}
+        
+        elif mode == "deploy":
+            # Try Vercel first (faster), fallback to Netlify
+            result = self._deploy_vercel(project_path, prod=True)
+            if not result.get("success"):
+                result = self._deploy_netlify(project_path, prod=True)
+            return result
+        
+        else:
+            return {"success": False, "error": f"Unknown mode: {mode}"}
     
     def _execute_step(self, step: str, task_context: str) -> str:
         """Execute a single step with smart context and terminal integration."""
@@ -849,6 +1542,11 @@ class AutonomousExecutor:
         
         project_name = self._get_project_name(original_objective)
         project_path = os.path.join(WORKSPACE_DIR, "projects", project_name)
+
+        # V3.4: Scaffold project structure on first access
+        if not os.path.exists(project_path):
+            os.makedirs(project_path, exist_ok=True)
+        self._scaffold_project(project_path, project_type=task_type)
 
         # Route to specialist
         routing = self._route_to_specialist(step, task_type, project_path)
@@ -872,6 +1570,15 @@ class AutonomousExecutor:
         saved_files = self._extract_and_save_code(response, project_name)
         if saved_files:
             response += f"\n\n[SYSTEM: Auto-saved {len(saved_files)} files: {', '.join(saved_files)}]"
+            
+            # V3.4: Auto-install dependencies found in saved files
+            installed_deps = self._install_dependencies(project_path, saved_files)
+            if installed_deps:
+                response += f"\n[SYSTEM: Installed {len(installed_deps)} packages: {', '.join(installed_deps)}]"
+            
+            # V3.4: Inject entry point if main.py lacks one
+            if 'main.py' in saved_files:
+                self._inject_entry_point(project_path, 'main.py')
         
         # === DEVILS ADVOCATE REVIEW (The "Integrity Check") ===
         # Mandatory audit for coding and research tasks
@@ -907,9 +1614,15 @@ class AutonomousExecutor:
                 self._log("😇 DEVIL APPROVED: No critical issues.")
         
         # === DEPENDENCY AUDITOR (The "Lab Work" Enforcer) ===
-        # Check if saved Python files import modules that don't exist
-        if saved_files:
-            missing_deps = self._audit_dependencies(project_path, saved_files)
+        # Check ALL Python files in the project for missing imports (not just newly saved)
+        all_py_files = []
+        for root, dirs, files in os.walk(project_path):
+            for f in files:
+                if f.endswith('.py'):
+                    all_py_files.append(f)
+        
+        if all_py_files:
+            missing_deps = self._audit_dependencies(project_path, all_py_files)
             if missing_deps:
                 self._log(f"🔬 DEPENDENCY AUDIT: {len(missing_deps)} missing modules detected: {missing_deps}")
                 # Force the agent to write these modules NOW
@@ -924,6 +1637,123 @@ Output the full Python code block for '{missing_module}.py'. No explanations, ju
                     new_saved = self._extract_and_save_code(dep_response, self._get_project_name(original_objective))
                     if new_saved:
                         response += f"\\n\\n[SYSTEM: Auto-generated dependency: {', '.join(new_saved)}]"
+
+        # === V3.3: POST-EXECUTION VALIDATION ===
+        # Try to run saved Python files and catch any errors
+        if all_py_files:
+            max_retries = 3
+            for retry in range(max_retries):
+                validation_errors = self._validate_execution(project_path, all_py_files)
+                
+                if not validation_errors:
+                    self._log(f"🧪 VALIDATION: All {len(all_py_files)} files passed!")
+                    break
+                
+                self._log(f"🧪 VALIDATION: {len(validation_errors)} errors found (retry {retry + 1}/{max_retries})")
+                
+                # Build fix prompt with specific errors
+                fix_prompt = "Your code has ERRORS that prevent it from running:\n\n"
+                for filename, error in validation_errors.items():
+                    fix_prompt += f"❌ {filename}: {error}\n"
+                fix_prompt += "\nFix ALL these errors NOW. Output the corrected code blocks."
+                
+                # Call LLM to fix
+                fix_response = self._call_llm(fix_prompt)
+                fixed_files = self._extract_and_save_code(fix_response, project_name)
+                
+                if fixed_files:
+                    response += f"\n\n[SYSTEM: Auto-fixed files: {', '.join(fixed_files)}]"
+                    # Re-scan for all py files after fix
+                    all_py_files = []
+                    for root, dirs, files in os.walk(project_path):
+                        for f in files:
+                            if f.endswith('.py'):
+                                all_py_files.append(f)
+        
+        # === V3.3: MULTI-PERSPECTIVE CODE REVIEW ===
+        # Review saved code from multiple angles (security, performance, correctness)
+        if saved_files:
+            for filename in saved_files:
+                if not filename.endswith('.py'):
+                    continue
+                
+                # Find and read the file
+                for root, dirs, files in os.walk(project_path):
+                    if filename in files:
+                        filepath = os.path.join(root, filename)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f:
+                                code = f.read()
+                            
+                            issues = self._multi_perspective_review(code, filename)
+                            critical_issues = [i for i in issues if i.get('risk') in ['critical', 'major']]
+                            
+                            if critical_issues:
+                                self._log(f"🔍 REVIEW: {filename} has {len(critical_issues)} critical issues")
+                                # Force fix for security issues
+                                security_issues = [i for i in critical_issues if i.get('perspective') == 'security']
+                                if security_issues:
+                                    sec_prompt = f"SECURITY ALERT for {filename}:\n"
+                                    for issue in security_issues:
+                                        sec_prompt += f"- {issue['title']}\n"
+                                    sec_prompt += "\nRewrite the code to fix these security issues."
+                                    self._log(f"  -> Forcing security fix for {filename}")
+                                    sec_response = self._call_llm(sec_prompt)
+                                    self._extract_and_save_code(sec_response, project_name)
+                            else:
+                                self._log(f"🔍 REVIEW: {filename} passed all perspectives ✅")
+                        except Exception as e:
+                            self._log(f"[Review] Error reading {filename}: {e}")
+                        break
+
+        # === V3.5: DATA-FIRST PIPELINE ===
+        # After code is saved, run it and capture output for paper generation
+        if 'main.py' in saved_files or os.path.exists(os.path.join(project_path, 'main.py')):
+            # Step 1: Run simulation and capture output
+            run_result = self._run_and_capture_output(project_path, 'main.py')
+            
+            if run_result.get("success") and run_result.get("json_data"):
+                # Step 2: Generate figures from captured data
+                figures = self._generate_figures(project_path, run_result["json_data"])
+                if figures:
+                    response += f"\n[SYSTEM: Generated {len(figures)} figures: {', '.join(figures)}]"
+                
+                # Step 3: If this is a research task, trigger paper generation with real data
+                if task_type == "research" and "paper" not in step.lower():
+                    self._log("📝 DATA-FIRST: Triggering paper generation with REAL data...")
+                    
+                    # Build paper prompt with actual results
+                    paper_prompt = self._enforce_paper_length(f"""
+Write a COMPLETE academic research paper based on THESE ACTUAL RESULTS:
+
+SIMULATION DATA:
+{json.dumps(run_result['json_data'], indent=2)}
+
+GENERATED FIGURES (reference these in your paper):
+{', '.join(figures) if figures else 'None generated'}
+
+PROJECT: {project_name}
+OBJECTIVE: {original_objective}
+
+Write the FULL paper now with proper academic formatting.
+""")
+                    # Store for next step rather than calling LLM here
+                    # (Paper generation should be a separate step)
+                    data_file = os.path.join(project_path, "data", "results.json")
+                    os.makedirs(os.path.dirname(data_file), exist_ok=True)
+                    with open(data_file, 'w') as f:
+                        json.dump(run_result["json_data"], f, indent=2)
+                    self._log(f"📊 DATA: Saved results to data/results.json for paper generation")
+            
+            elif run_result.get("error"):
+                self._log(f"⚠️ RUN: Simulation failed - {run_result['error']}")
+        
+        # === V3.5: DOCX EXPORT ===
+        # Export any markdown papers to DOCX
+        md_files = [f for f in saved_files if f.endswith('.md') or f.endswith('.markdown')]
+        for md_file in md_files:
+            if 'paper' in md_file.lower() or 'generated' in md_file.lower():
+                self._export_to_docx(project_path, md_file)
 
         return response
         # Ensure project exists

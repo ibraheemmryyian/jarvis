@@ -1,8 +1,8 @@
 # TASK_STATE Context
 
 
-<!-- ENTRY: 2025-12-22 01:29:59 -->
-# Task: 20251222_012959
+<!-- ENTRY: 2025-12-22 17:13:50 -->
+# Task: 20251222_171350
         
 **Objective:** 
     I want you to act as a full autonomous research lab.
@@ -11,45 +11,48 @@
     
     **Your Mission**:
     1. **Concept**: Refine the "ATRA-G" concept.
-    2. **Real Science**: You MUST use `networkx` to generate a REAL graph (e.g., Erdos-Renyi) and calculate REAL Centrality. Do NOT use `random.uniform()`.
-    3. **Code Structure**: Create a clean project structure.
+    2. **Real Science (Advanced)**:
+       - **Robustness**: Test on THREE topologies: Erdős–Rényi, Barabasi-Albert (Scale-Free), and Watts-Strogatz (Small-World).
+       - **Ablation Study**: You MUST run a Control Group (Random Allocation) vs Experimental Group (ATRA-G) to prove the "Topology" term actually matters.
+       - **Sensitivity**: Vary the alpha/beta parameters to find the optimal configuration.
+    3. **Code Structure**:
        - `src/simulation.py`: The core logic (networkx + agents).
-       - `src/main.py`: The entry point.
+       - `src/main.py`: The entry point that runs all 3 topologies.
        - `paper.md`: The report.
-    4. **Execute**: Run the simulation code to generate REAL data (latency, utilization).
+    4. **Execute**: Run the simulation code to generate REAL data.
     5. **Publish**: Write the paper using the REAL data.
 
     **CRITICAL RULES**:
-    - NO MOCK DATA. I will audit your code.
-    - NO EMBEDDED CODE in the paper. The paper should reference the files.
+    - NO MOCK DATA. The "Devils Advocate" is watching. If you fake it, you fail.
+    - OUTPUT THE CODE BLOCKS. You must output the full python code for `simulation.py` so it can be saved.
     - SAVE YOUR WORK.
     
 
 **Steps:**
-- [ ] PHASE 1: ARCHITECTURE**
+- [ ] PHASE 1: ARCHITECTURE (Steps 1–3)**
 - [ ] [ARCHITECTURE] Create complete system design document with data models, API specs, file structure**
-- [ ] Data Models**:
-- [ ] `Agent`: id, resource_capacity, latency, current_task, centrality_score, state (idle/active/failed)
-- [ ] `Edge`: source_agent, target_agent, weight (latency or bandwidth)
-- [ ] `Graph`: nodes (agents), edges (connections), centrality_metrics (betweenness, degree, closeness)
-- [ ] API Specs** (Internal only — simulation-driven):
-- [ ] `simulate_graph()` → generates Erdos-Renyi graph with `n=100`, `p=0.05`
-- [ ] `compute_centrality()` → calculates betweenness, degree, closeness for all nodes
-- [ ] `allocate_resources()` → assigns tasks to agents based on centrality + latency
-- [ ] `collect_metrics()` → outputs latency, utilization, throughput, failure_rate
-- [ ] File Structure**:
+- [ ] System Design Document (Draft)**
+- [ ] Core Concept: ATRA-G (Adaptive Topology-Responsive Allocation with Gradient Optimization)**
+- [ ] Goal**: Dynamically allocate computational resources among agents in a decentralized swarm based on local topology awareness and gradient-based optimization.
+- [ ] Key Components**:
+- [ ] `Agent`: Represents an AI node with state (resource demand, latency, topology awareness).
+- [ ] `Topology`: Graph structure (Erdős–Rényi, Barabasi-Albert, Watts-Strogatz) defining connectivity.
+- [ ] `ResourcePool`: Centralized (simulated) pool of compute units; distributed in reality.
+- [ ] `GradientOptimizer`: Computes local resource gradients using topology-aware heuristics.
+- [ ] `Scheduler`: Decides allocation per agent per time step.
+- [ ] Data Models**
+- [ ] Simulation State Model
+- [ ] ATRA-G Parameters
+- [ ] File Structure**
 - [ ] [ARCHITECTURE] Define component boundaries and integration points**
-- [ ] Component Boundaries**:
-- [ ] `simulation.py`: Handles graph generation, centrality calculation, task allocation logic.
-- [ ] `agents.py`: Defines Agent class with state transitions, resource consumption, and latency modeling.
-- [ ] `main.py`: Orchestrates simulation runs, logs results, triggers data export.
-- [ ] Integration Points**:
-- [ ] `simulation.py` → `agents.py`: Passes graph structure to agents for state updates.
-- [ ] `agents.py` → `simulation.py`: Reports latency, utilization, and state changes.
-- [ ] `main.py` → `simulation.py`: Calls `simulate_graph()` and `collect_metrics()`.
-- [ ] `main.py` → `paper.md`: Writes final report with metrics.
-- [ ] [ARCHITECTURE] Create project skeleton with proper folder structure**
-- [ ] Create directories**:
-- [ ] Install dependencies**:
+- [ ] Component Boundaries**
+- [ ] `simulation.py`**
+- [ ] Role**: Core simulation engine.
+- [ ] Interfaces**:
+- [ ] `initialize_topology(topology_config)` → returns NetworkX graph
+- [ ] `initialize_agents(n_agents, topology)` → returns list of Agent objects
+- [ ] `run_step()` → runs one time step, updates metrics
+- [ ] `get_metrics()` → returns performance metrics for analysis
+- [ ] `set_params(alpha, beta)` → updates ATRA-G parameters
 
 <!-- /ENTRY -->

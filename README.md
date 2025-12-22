@@ -24,9 +24,19 @@ Jarvis is a **locally-running AI workforce platform** with 36 specialized agents
 - 📝 **Content Writing** - Blogs, emails, social media
 - 📅 **Integrations** - Email, Calendar, Git, API
 - 🔒 **100% Local** - Your data never leaves your machine
-- 🛡️ **V3.1 Strict Mode** - "Devils Advocate" validation loop to prevent hallucinations
-- 💾 **Auto-Save Supervisor** - Prevents "Lost in RAM" bugs during long tasks
 - 💰 **$0 API Costs** - Uses local LLM
+
+### V3 Enterprise Features (NEW!)
+- 🛡️ **V3.1 Strict Mode** - Devils Advocate validation loop
+- 🔍 **V3.2 Dependency Auditor** - Auto-detects missing imports
+- ✅ **V3.3 Post-Execution Validation** - Runs code, catches errors, auto-fixes
+- 🔐 **V3.3 Multi-Perspective Review** - Security, performance, correctness checks
+- 📁 **V3.4 Project Scaffolding** - Auto-generates src/, tests/, README.md
+- 📊 **V3.5 Data-First Pipeline** - Run simulations → Real data in papers
+- 📈 **V3.5 Figure Generation** - Auto-generates matplotlib charts
+- 📄 **V3.5 DOCX Export** - Academic submission ready
+- 🚀 **V3.6 Deployment Tools** - Netlify & Vercel CLI integration
+- 🖥️ **V3.6 Dev Server** - npm run dev / python http.server
 
 ---
 
@@ -196,6 +206,7 @@ Jarvis never generates generic templates:
 
 ## 📈 Roadmap
 
+### Completed ✅
 - [x] 36 Agent System
 - [x] Autonomous Execution
 - [x] Design Creativity
@@ -204,6 +215,14 @@ Jarvis never generates generic templates:
 - [x] Memory Layer
 - [x] Content Writer
 - [x] Business Suite
+- [x] V3.1 Devils Advocate (Strict Mode)
+- [x] V3.2 Dependency Auditor
+- [x] V3.3 Post-Execution Validation
+- [x] V3.4 Project Scaffolding
+- [x] V3.5 Data-First Pipeline
+- [x] V3.6 Deployment Tools (Netlify/Vercel)
+
+### In Progress 🚧
 - [ ] Web Dashboard
 - [ ] Agent VMs
 - [ ] Multi-tenant SaaS

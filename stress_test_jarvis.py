@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from agents.orchestrator import orchestrator
 from agents.context_manager import context
+from agents.recycler import recycler
 
 def print_callback(msg):
     """Real-time feedback printer"""
@@ -28,6 +29,12 @@ def main():
 """
     context.write("user_preferences", f"# User Preferences\n{preferences}")
     print("✅ User preferences set in .context/user_preferences.md")
+    
+    # 1.5 Reset Recycler State (force fresh start for autonomy)
+    recycler.task_objective = ""
+    recycler.pending_steps = []
+    recycler.completed_steps = []
+    print("🔄 Recycler state reset for fresh run")
     
     # 2. Define the Massive Prompt
     prompt = """

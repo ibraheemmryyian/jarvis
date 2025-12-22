@@ -1,0 +1,17 @@
+{
+  "ER": {
+    "avg_efficiency": 1.0,
+    "avg_variance": 0.0,
+    "iterations": 12
+  },
+  "BA": {
+    "avg_efficiency": 0.8789,
+    "avg_variance": 0.0114,
+    "iterations": 12
+  },
+  "WS": {
+    "avg_efficiency": 0.99,
+    "avg_variance": 0.0004,
+    "iterations": 12
+  }
+}
