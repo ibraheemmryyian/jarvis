@@ -23,39 +23,10 @@ class PromptRefiner:
     - Infers missing details from context
     """
     
-    # Common project types and their default specs
-    PROJECT_TEMPLATES = {
-        "crm": {
-            "type": "web_app",
-            "features": ["contacts", "deals", "pipeline", "notes", "search"],
-            "stack": "React + FastAPI",
-            "style": "modern, dark theme"
-        },
-        "landing": {
-            "type": "website",
-            "sections": ["hero", "features", "testimonials", "pricing", "cta"],
-            "stack": "HTML/CSS/JS",
-            "style": "premium, animated"
-        },
-        "dashboard": {
-            "type": "web_app",
-            "features": ["charts", "tables", "filters", "export"],
-            "stack": "React + API",
-            "style": "dark, data-rich"
-        },
-        "api": {
-            "type": "backend",
-            "features": ["CRUD", "auth", "validation", "docs"],
-            "stack": "FastAPI",
-            "style": "RESTful"
-        },
-        "blog": {
-            "type": "website",
-            "features": ["posts", "categories", "search", "comments"],
-            "stack": "Next.js or HTML",
-            "style": "clean, readable"
-        }
-    }
+    # V4.3: REMOVED PROJECT_TEMPLATES
+    # These were injecting generic features (auth, CRUD) that polluted user intent
+    # Jarvis should understand intent, not assume features
+    PROJECT_TEMPLATES = {}  # Empty - preserve original intent
     
     # Keywords that trigger specific inferences
     KEYWORDS = {
@@ -77,6 +48,23 @@ class PromptRefiner:
     
     def __init__(self):
         self.context_history = []
+        self.founder_profile = self._load_founder_profile()
+    
+    def _load_founder_profile(self) -> str:
+        """
+        V4.3: Load founder profile for cofounder mode.
+        Jarvis needs to know the businesses, vision, working style.
+        """
+        profile_path = os.path.join(WORKSPACE_DIR, ".context", "founder_profile.md")
+        if os.path.exists(profile_path):
+            try:
+                with open(profile_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    # Limit to essential info (first 1500 chars)
+                    return content[:1500]
+            except:
+                pass
+        return ""
     
     def _detect_resume_intent(self, user_input: str) -> bool:
         """
@@ -357,29 +345,48 @@ class PromptRefiner:
     
     def refine_with_llm(self, user_input: str) -> Dict:
         """
-        Use LLM for more complex refinement when rules aren't enough.
+        V4.3: COFOUNDER MODE - Understand intent, don't add features.
+        Uses low temperature for deterministic understanding.
         """
-        prompt = f"""Refine this user request into a detailed technical specification.
+        # V4.3: Include founder profile if available
+        founder_context = ""
+        if self.founder_profile:
+            founder_context = f"""
+## FOUNDER CONTEXT (reference this for understanding):
+{self.founder_profile[:800]}
 
-USER REQUEST: "{user_input}"
+"""
+        
+        prompt = f"""You are a technical cofounder reading a founder's quick message.
+Your job is to UNDERSTAND their intent, not add features they didn't ask for.
+{founder_context}
+FOUNDER SAYS: "{user_input}"
+
+CRITICAL RULES:
+1. DO NOT add features not explicitly mentioned
+2. DO NOT assume they want auth/login unless they said so
+3. DO NOT assume they want a database unless they said so
+4. FOCUS on exactly what they asked for
+5. If they want a voice app, focus on VOICE - not generic web app features
+6. If they mention a business (SymbioFlow, etc), reference the founder context
 
 Output a JSON with:
-- project_type: (website, web_app, api, mobile, etc.)
-- name: suggested project name
-- features: list of key features
-- stack: recommended tech stack
-- style: design style/theme
-- priority_features: top 3 must-haves
-- refined_prompt: a detailed prompt for the developer
+{{
+  "understood_intent": "What you think they actually want in 1-2 sentences",
+  "project_type": "web_app | mobile | api | landing | research | tool",
+  "core_features": ["Only what they explicitly mentioned or directly implied"],
+  "tech_stack": "Your recommendation based on what they asked for",
+  "refined_prompt": "A clear, focused prompt that preserves their original intent"
+}}
 
-Be practical. Infer reasonable defaults. Don't ask for more info, just make smart assumptions.
+Remember: They're busy. They gave you jackshit. Your job is to CATCH UP to their thinking, not add your own ideas.
 
 Output JSON only:"""
 
-        response = self._call_llm(prompt)
+        # V4.3: Use very low temperature for deterministic understanding
+        response = self._call_llm(prompt, temperature=0.2)
         
         try:
-            # Try to extract JSON
             import re
             json_match = re.search(r'\{[\s\S]*\}', response)
             if json_match:
@@ -395,8 +402,15 @@ Output JSON only:"""
         except:
             pass
         
-        # Fallback to rule-based
-        return self.refine(user_input)
+        # Fallback: Just return the original - don't corrupt intent
+        return {
+            "original": user_input,
+            "needs_clarification": False,
+            "questions": [],
+            "refined_prompt": user_input,  # PRESERVE ORIGINAL
+            "spec": {"original_request": user_input},
+            "confidence": 0.5
+        }
     
     def quick_refine(self, user_input: str) -> str:
         """

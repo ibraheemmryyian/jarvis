@@ -1,0 +1,24 @@
+/* Default light theme */
+:root {
+  --background-color: #fff;
+  --text-color: #333;
+  --accent-color: linear-gradient(to right, #ff7e5f, #feb47b);
+}
+
+/* Dark mode theme */
+[data-theme='dark']:root {
+  --background-color: #121212;
+  --text-color: #ccc;
+  --accent-color: linear-gradient(to right, #5f1e51, #9d3a6e);
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.gradient-accent {
+  background: var(--accent-color);
+  padding: 20px;
+}

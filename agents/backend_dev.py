@@ -75,14 +75,76 @@ Include:
 Output complete code."""
         return self._call_llm(prompt)
     
-    def run(self, task: str) -> str:
-        """Execute backend development task."""
-        if "api" in task.lower() or "endpoint" in task.lower():
-            return self.create_api(task)
-        elif "service" in task.lower():
-            return self.create_service(task)
+    def run(self, task: str, project_context: str = "") -> str:
+        """Execute backend development task with proper file naming."""
+        task_lower = task.lower()
+        
+        # Detect file type from task
+        if any(kw in task_lower for kw in ["auth", "login", "password", "jwt", "token"]):
+            file_hint = "backend/auth.py"
+        elif any(kw in task_lower for kw in ["database", "model", "schema", "sqlalchemy"]):
+            file_hint = "backend/models.py"
+        elif any(kw in task_lower for kw in ["crud", "repository"]):
+            file_hint = "backend/crud.py"
+        elif any(kw in task_lower for kw in ["admin", "dashboard"]):
+            file_hint = "backend/admin.py"
+        elif any(kw in task_lower for kw in ["payment", "stripe", "billing"]):
+            file_hint = "backend/payments.py"
+        elif any(kw in task_lower for kw in ["email", "notification", "smtp"]):
+            file_hint = "backend/email_service.py"
+        elif any(kw in task_lower for kw in ["test", "pytest"]):
+            file_hint = "tests/test_api.py"
         else:
-            return self._call_llm(f"Backend task: {task}")
+            file_hint = "backend/api.py"
+        
+        # Include existing project context if available
+        context_section = ""
+        if project_context:
+            context_section = f"""
+EXISTING PROJECT FILES (integrate with these, don't duplicate):
+{project_context[:1500]}
+
+IMPORTANT: Import from existing modules where appropriate. Build ON the existing codebase.
+"""
+        
+        # Build comprehensive prompt
+        prompt = f"""You are building a COMPLETE, PRODUCTION-READY backend module.
+
+TASK: {task}
+{context_section}
+CRITICAL REQUIREMENTS:
+1. Output COMPLETE code - no placeholders, no "..." or "# add more here"
+2. Start your code block with the FILENAME comment, like: # {file_hint}
+3. Include ALL imports at the top
+4. Include FULL implementation with at least 100+ lines
+5. Use FastAPI with Pydantic models
+6. Include proper error handling with HTTPException
+7. Add type hints for all functions
+8. Include docstrings
+9. Add input validation
+
+SUGGESTED FILE: {file_hint}
+
+STRUCTURE YOUR OUTPUT AS:
+```python
+# {file_hint}
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
+# ... more imports
+
+# Models
+class YourModel(BaseModel):
+    ...
+
+# Routes/Logic
+@app.get("/...")
+async def your_endpoint():
+    ...
+```
+
+Output the COMPLETE module code now."""
+
+        return self._call_llm(prompt)
 
 
 # Singleton

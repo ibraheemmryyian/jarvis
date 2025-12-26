@@ -38,6 +38,7 @@ from .prompt_refiner import prompt_refiner, PromptRefiner
 from .devils_advocate import devils_advocate, DevilsAdvocate
 from .security_auditor import security_auditor, SecurityAuditor
 from .document_engine import document_engine, DocumentEngine
+from .devtools import devtools, DevTools  # CTO-level tools
 
 __all__ = [
     "context",

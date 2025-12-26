@@ -1,0 +1,23 @@
+/* landing-professional-secure Styles */
+:root {
+    --primary: #6366f1;
+    --secondary: #8b5cf6;
+    --bg-dark: #0f0f23;
+    --bg-card: #1a1a2e;
+    --text: #e2e8f0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* JARVIS: Insert component styles here */

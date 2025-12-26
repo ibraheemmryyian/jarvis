@@ -211,7 +211,16 @@ Thumbs.db
         Returns:
             Dict with push result
         """
-        result = self._run_git(["push", remote, branch], cwd=project_path)
+        # Ensure we're on the right branch
+        self._run_git(["branch", "-M", branch], cwd=project_path)
+        
+        # Try push with upstream tracking
+        result = self._run_git(["push", "-u", remote, branch], cwd=project_path)
+        
+        if not result["success"]:
+            # If push fails, try force push (for new repos)
+            result = self._run_git(["push", "-u", "-f", remote, branch], cwd=project_path)
+        
         return result
     
     def add_remote(self, project_path: str, repo_url: str, remote_name: str = "origin") -> Dict:

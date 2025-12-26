@@ -496,6 +496,40 @@ Output ONLY the JSON array, nothing else."""
         
         return "\n".join(sections)
     
+    def run(self, topic: str, progress_callback=None) -> str:
+        """
+        Execute research and return synthesized results.
+        This is the main entry point expected by the autonomous executor.
+        
+        Args:
+            topic: What to research
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Synthesized research findings as a string
+        """
+        # Execute the research
+        self.gather(topic, progress_callback=progress_callback, use_llm_queries=True)
+        
+        # Save raw results
+        self.save_raw(topic)
+        
+        # Return synthesized context string
+        context_str = self.to_context_string()
+        
+        # Add summary header
+        total_items = sum(len(r.data) if isinstance(r.data, list) else 0 for r in self.results)
+        aggregated = self.aggregate_by_category()
+        
+        summary = f"""# Research Results for: {topic}
+
+**Total Results:** {total_items} items from {len(self.results)} queries
+**Categories:** {', '.join(aggregated.keys())}
+
+{context_str}
+"""
+        return summary
+    
     def save_raw(self, topic: str):
         """Save raw results to context directory."""
         filepath = os.path.join(CONTEXT_DIR, "research_raw.json")

@@ -337,6 +337,52 @@ Format as numbered list."""
             "ideas": ideas,
             "count": count
         }
+    def run(self, task: str) -> str:
+        """
+        Execute a content writing task.
+        This is the main entry point expected by the autonomous executor.
+        
+        Args:
+            task: Description of content to write
+            
+        Returns:
+            Generated content as a string
+        """
+        task_lower = task.lower()
+        
+        # Detect content type from task
+        if "blog" in task_lower or "article" in task_lower or "post" in task_lower:
+            result = self.write_blog(task)
+            return result.get("content", "")
+        
+        elif "email" in task_lower:
+            email_type = "cold_outreach"
+            if "follow" in task_lower:
+                email_type = "follow_up"
+            elif "newsletter" in task_lower:
+                email_type = "newsletter"
+            elif "thank" in task_lower:
+                email_type = "thank_you"
+            result = self.write_email(task, email_type=email_type)
+            return result.get("full_content", "")
+        
+        elif any(p in task_lower for p in ["twitter", "linkedin", "instagram", "social"]):
+            platform = "linkedin"  # default
+            if "twitter" in task_lower or "tweet" in task_lower:
+                platform = "twitter"
+            elif "instagram" in task_lower:
+                platform = "instagram"
+            result = self.write_social(platform, task)
+            return result.get("content", "")
+        
+        elif "idea" in task_lower:
+            result = self.generate_ideas(task)
+            return result.get("ideas", "")
+        
+        else:
+            # Default to blog-style content
+            result = self.write_blog(task)
+            return result.get("content", "")
 
 
 # Singleton

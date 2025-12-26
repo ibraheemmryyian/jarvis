@@ -427,7 +427,9 @@ Generate the corrected code for each file. Use proper code blocks with filenames
     
     def _save_qa_report(self, project_path: str, results: Dict):
         """Save QA report to project."""
-        report_path = os.path.join(project_path, ".jarvis", "qa_report.json")
+        jarvis_dir = os.path.join(project_path, ".jarvis")
+        os.makedirs(jarvis_dir, exist_ok=True)
+        report_path = os.path.join(jarvis_dir, "qa_report.json")
         with open(report_path, 'w') as f:
             json.dump(results, f, indent=2)
 

@@ -1,0 +1,16 @@
+class ELTMALayer(nn.Module):
+    def __init__(self, d_model, num_heads, memory_size):
+        ...
+    def forward(self, x, mem, mask):
+        ...
+
+# baseline.py - Baseline Transformer layer for comparison
+class TransformerLayer(nn.Module):
+    def __init__(self, d_model, num_heads):
+        ...
+    def forward(self, x, mask):
+        ...
+
+# benchmark.py - Test harness to compare ELTMA with baseline
+def run_benchmarks():
+    ...

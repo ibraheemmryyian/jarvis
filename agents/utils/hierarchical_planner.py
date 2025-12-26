@@ -96,7 +96,7 @@ class HierarchicalPlanner:
     
     def create_hierarchical_plan(self, objective: str, llm_callback) -> HierarchicalPlan:
         """
-        Create a hierarchical plan by asking LLM to decompose the task.
+        V4.3: Create a hierarchical plan that PRESERVES user intent.
         
         Args:
             objective: The main goal
@@ -105,27 +105,28 @@ class HierarchicalPlanner:
         Returns:
             HierarchicalPlan with sub-projects
         """
-        prompt = f"""You are a project architect. Break down this large objective into 3-7 sub-projects.
+        # V4.3: COFOUNDER MODE - Preserve intent, don't add features
+        prompt = f"""Break down this objective into focused sub-projects.
 
 OBJECTIVE: {objective}
 
-Return a JSON object with this structure:
+CRITICAL RULES:
+1. ONLY include tasks that directly serve the objective
+2. DO NOT add generic features (auth, database, API) unless explicitly mentioned
+3. FOCUS on what the user actually asked for
+4. Keep steps specific to the actual goal
+
+Return a JSON object:
 {{
   "sub_projects": [
     {{
-      "name": "Short name",
-      "description": "What this sub-project accomplishes",
-      "steps": ["Step 1", "Step 2", "Step 3"],
-      "depends_on": []  // Names of sub-projects this depends on
+      "name": "Short descriptive name",
+      "description": "What this accomplishes toward the objective",
+      "steps": ["Specific step 1", "Specific step 2"],
+      "depends_on": []
     }}
   ]
 }}
-
-Rules:
-1. Each sub-project should have 3-8 steps
-2. Order sub-projects by dependency (foundations first)
-3. Each step should be actionable and specific
-4. Later sub-projects should depend on earlier ones where logical
 
 Return ONLY valid JSON, no explanation."""
 

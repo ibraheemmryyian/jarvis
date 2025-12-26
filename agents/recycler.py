@@ -32,7 +32,8 @@ class ContextRecycler:
         # Get domains from registry (single source of truth)
         try:
             from .registry import CONTEXT_DOMAINS
-            self.DOMAINS = {name: f"{name}_context.md" for name in CONTEXT_DOMAINS.keys()}
+            # Use actual file names from registry, not auto-generated
+            self.DOMAINS = {name: config["file"] for name, config in CONTEXT_DOMAINS.items()}
         except ImportError:
             # Fallback if registry not available
             self.DOMAINS = {

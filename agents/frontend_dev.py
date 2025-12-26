@@ -72,14 +72,77 @@ Include:
 Output the COMPLETE page code (500+ lines)."""
         return self._call_llm(prompt)
     
-    def run(self, task: str) -> str:
-        """Execute frontend development task."""
-        if "component" in task.lower():
-            return self.create_component(task)
-        elif "page" in task.lower():
-            return self.create_page(task)
+    def run(self, task: str, project_context: str = "") -> str:
+        """Execute frontend development task with proper file output."""
+        task_lower = task.lower()
+        
+        # Detect what kind of file/component is needed
+        if any(kw in task_lower for kw in ["hero", "header", "nav", "landing"]):
+            file_hint = "HeroSection.jsx or Header.jsx"
+        elif any(kw in task_lower for kw in ["form", "contact", "login", "signup"]):
+            file_hint = "ContactForm.jsx or LoginForm.jsx"
+        elif any(kw in task_lower for kw in ["card", "testimonial", "feature"]):
+            file_hint = "FeatureCard.jsx or Testimonials.jsx"
+        elif any(kw in task_lower for kw in ["footer"]):
+            file_hint = "Footer.jsx"
+        elif any(kw in task_lower for kw in ["dashboard", "admin"]):
+            file_hint = "Dashboard.jsx"
+        elif any(kw in task_lower for kw in ["css", "style", "theme", "dark mode"]):
+            file_hint = "styles.css or theme.css"
+        elif any(kw in task_lower for kw in ["animation", "scroll"]):
+            file_hint = "animations.js or ScrollAnimations.jsx"
         else:
-            return self._call_llm(f"Frontend task: {task}")
+            file_hint = "App.jsx or index.jsx"
+        
+        # Include existing project context if available
+        context_section = ""
+        if project_context:
+            context_section = f"""
+EXISTING PROJECT FILES (be aware of what's already built):
+{project_context[:1500]}
+
+IMPORTANT: Do NOT recreate files that already exist. Instead, create NEW components that integrate with the existing codebase.
+"""
+        
+        # Build comprehensive prompt
+        prompt = f"""You are building a COMPLETE, PRODUCTION-READY frontend component.
+
+TASK: {task}
+{context_section}
+CRITICAL REQUIREMENTS:
+1. Output COMPLETE code - no placeholders, no "..." or "// add more here"
+2. Start your code block with the FILENAME comment, like: // src/components/HeroSection.jsx
+3. Include ALL imports at the top
+4. Include FULL implementation with at least 100+ lines
+5. Use modern React with hooks (useState, useEffect)
+6. Include inline styles or styled-components for all styling
+7. Add loading states, error handling, proper types
+8. Mobile-responsive with CSS media queries
+9. Dark theme by default with gradient accents (#667eea, #764ba2)
+
+SUGGESTED FILE: {file_hint}
+
+Output the COMPLETE component code in a single code block.
+Start with: // src/components/YourComponentName.jsx"""
+
+        result = self._call_llm(prompt)
+        
+        # If it's CSS-focused, also generate CSS
+        if "css" in task_lower or "style" in task_lower:
+            css_prompt = f"""Generate COMPLETE CSS for: {task}
+
+Include:
+- CSS variables for colors/spacing
+- Dark mode as default
+- Responsive breakpoints (mobile, tablet, desktop)
+- Smooth transitions and hover effects
+- At least 100+ lines of comprehensive CSS
+
+Start with: /* src/styles/main.css */"""
+            css_result = self._call_llm(css_prompt)
+            result = result + "\n\n" + css_result
+        
+        return result
 
 
 # Singleton

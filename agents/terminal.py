@@ -497,7 +497,31 @@ class TerminalAgent:
             if keyword in cmd_lower:
                 return {"allowed": False, "reason": f"BLOCKED: Keyword '{keyword}' not allowed"}
         
-        # LAYER 4: Check base command is whitelisted
+        # LAYER 4: PACKAGE SECURITY CHECK (typosquatting, malware)
+        if "pip install" in cmd_lower or "pip3 install" in cmd_lower or \
+           "npm install" in cmd_lower or "npm i " in cmd_lower:
+            try:
+                from .package_security import verify_install_command
+                pkg_check = verify_install_command(command)
+                
+                if not pkg_check.get("safe", True):
+                    blocked_pkgs = pkg_check.get("blocked", [])
+                    if blocked_pkgs:
+                        reasons = [f"{p['package']}: {p['reason']}" for p in blocked_pkgs[:3]]
+                        return {
+                            "allowed": False,
+                            "reason": f"BLOCKED PACKAGES: {'; '.join(reasons)}"
+                        }
+                
+                # Warn about suspicious packages but allow
+                warnings = pkg_check.get("warnings", [])
+                if warnings:
+                    # Log warning but allow
+                    print(f"[SECURITY WARNING] Suspicious packages: {[w['package'] for w in warnings]}")
+            except ImportError:
+                pass  # Package security module not available, continue
+        
+        # LAYER 5: Check base command is whitelisted
         parts = command.split()
         if not parts:
             return {"allowed": False, "reason": "Empty command"}

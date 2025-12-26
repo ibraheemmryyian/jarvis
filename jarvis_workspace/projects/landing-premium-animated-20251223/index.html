@@ -1,0 +1,116 @@
+<!-- Features Section -->
+<section id="features" class="section">
+  <div class="container">
+    <h2>Key Features</h2>
+    
+    <!-- Feature Cards Container -->
+    <div class="feature-cards" data-aos="fade-up" data-aos-delay="100">
+      <div class="card">
+        <div class="icon"><i class="fas fa-robot"></i></div>
+        <h3>AI Swarm Intelligence</h3>
+        <p>Decentralized agents with self-organizing behavior and topology-aware decision making.</p>
+      </div>
+      
+      <div class="card">
+        <div class="icon"><i class="fas fa-chart-line"></i></div>
+        <h3>Dynamic Resource Allocation</h3>
+        <p>Real-time optimization of computational resources based on affinity matrices and task priorities.</p>
+      </div>
+      
+      <div class="card">
+        <div class="icon"><i class="fas fa-cog"></i></div>
+        <h3>Adaptive Learning Rates</h3>
+        <p>Self-adjusting algorithms that improve performance through continuous feedback loops.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CSS -->
+<style>
+.section {
+  padding: 80px 20px;
+  background-color: #121212;
+  color: #fff;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  text-align: center;
+}
+
+h2 {
+  font-size: 2.5em;
+  margin-bottom: 40px;
+  position: relative;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #3a71c6;
+}
+
+.feature-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 40px;
+  margin-top: 40px;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUp 1s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card {
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 30px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.icon {
+  font-size: 3em;
+  margin-bottom: 20px;
+  color: #3a71c6;
+}
+
+.card h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2em;
+}
+
+.card p {
+  font-size: 0.95em;
+}
+</style>
+
+<!-- JavaScript (Intersection Observer) -->
+<script>
+// Scroll-triggered animations
+document.addEventListener("DOMContentLoaded", () => {
+  const cards = document.querySelectorAll(".feature-cards");
+  
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animation = "fadeInUp 1s ease-out forwards";
+      }
+    });
+  }, { threshold: 0.3 });
+
+  cards.forEach(card => {
+    observer.observe(card);
+  });
+});
+</script>

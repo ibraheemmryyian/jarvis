@@ -1,0 +1,1 @@
+[COMMAND]: mkdir -p project/frontend && touch project/frontend/index.html project/frontend/styles.css project/frontend/script.js

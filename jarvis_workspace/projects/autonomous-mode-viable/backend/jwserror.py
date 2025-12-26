@@ -1,0 +1,2 @@
+class JWSError(Exception):
+    pass

@@ -5,7 +5,7 @@ Centralized settings for all agents.
 import os
 
 # --- LLM Server ---
-LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
+LM_STUDIO_URL = os.environ.get("LM_STUDIO_URL", "http://127.0.0.1:1234/v1/chat/completions")
 
 # --- Paths ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +24,7 @@ CONTEXT_FILES = {
     "decisions": os.path.join(CONTEXT_DIR, "decisions.md"),
     "deployment_log": os.path.join(CONTEXT_DIR, "deployment_log.md"),
     "documentation": os.path.join(CONTEXT_DIR, "documentation.md"),
-    "user_preferences": os.path.join(CONTEXT_DIR, "user_preferences.md"),  # NEW: User preferences
+    "user_preferences": os.path.join(CONTEXT_DIR, "user_preferences.md"),
 }
 
 # --- Agent Settings ---
@@ -36,18 +36,75 @@ AGENT_TEMPS = {
 }
 
 # --- Token Limits (Adaptive for Speed) ---
-# SPEED FIX: Reduced from 132K to 16K - every token has to attend to ALL context tokens
-# 132K = 2-6 t/s, 16K = 30-50 t/s on same GPU
-MAX_CONTEXT_TOKENS = 16384  # 16K is enough for most tasks, MUCH faster
+MAX_CONTEXT_TOKENS = int(os.environ.get("JARVIS_MAX_TOKENS", 32000))
 
 # Adaptive output limits by task type
 TOKEN_LIMITS = {
-    "planning": 4096,      # Plans, routing, analysis (~20 min at 3 t/s)
-    "simple": 4096,        # Quick responses, summaries
-    "standard": 6144,      # Most code tasks (~30 min at 3 t/s)
-    "component": 10240,    # Full component generation (~55 min at 3 t/s)
-    "max": 16384,          # Only for explicit "create complete app" steps
+    "planning": 4096,
+    "simple": 4096,
+    "standard": 6144,
+    "component": 10240,
+    "max": 16384,
 }
 
 # Default for backward compatibility
 MAX_OUTPUT_TOKENS = TOKEN_LIMITS["standard"]
+
+
+# --- Runtime Context Settings ---
+class ContextSettings:
+    """
+    Runtime-adjustable context settings.
+    Can be modified from UI without restarting Jarvis.
+    """
+    def __init__(self):
+        self._max_tokens = MAX_CONTEXT_TOKENS
+        self._recycle_threshold = 0.75  # Recycle at 75% usage
+        self._model_name = os.environ.get("JARVIS_MODEL", "nous-hermes-3-8b")
+    
+    @property
+    def max_tokens(self) -> int:
+        return self._max_tokens
+    
+    @max_tokens.setter
+    def max_tokens(self, value: int):
+        self._max_tokens = max(4096, min(value, 131072))  # Clamp 4K-128K
+    
+    @property
+    def recycle_threshold(self) -> float:
+        return self._recycle_threshold
+    
+    @recycle_threshold.setter
+    def recycle_threshold(self, value: float):
+        self._recycle_threshold = max(0.5, min(value, 0.95))  # Clamp 50%-95%
+    
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+    
+    @model_name.setter 
+    def model_name(self, value: str):
+        self._model_name = value
+    
+    def to_dict(self) -> dict:
+        """Export settings for API/UI."""
+        return {
+            "max_tokens": self._max_tokens,
+            "recycle_threshold": self._recycle_threshold,
+            "model_name": self._model_name,
+            "token_limits": TOKEN_LIMITS,
+        }
+    
+    def update(self, **kwargs):
+        """Update settings from dict (e.g., from API request)."""
+        if "max_tokens" in kwargs:
+            self.max_tokens = kwargs["max_tokens"]
+        if "recycle_threshold" in kwargs:
+            self.recycle_threshold = kwargs["recycle_threshold"]
+        if "model_name" in kwargs:
+            self.model_name = kwargs["model_name"]
+
+
+# Global settings instance (modifiable at runtime)
+context_settings = ContextSettings()
+

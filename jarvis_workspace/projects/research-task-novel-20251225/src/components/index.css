@@ -1,0 +1,48 @@
+.hero-section {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  padding: 4rem;
+  
+  @media (max-width: 768px) {
+    padding: 2rem;
+  }
+}
+
+.research-tasks {
+  max-width: 800px;
+  margin: auto;
+  padding: 1rem;
+}
+
+.task-item {
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 1rem;
+  }
+}
+
+.task-details {
+  max-width: 600px;
+  margin: auto;
+  padding: 2rem;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+This breaks down the key components:
+
+- App.jsx serves as the main entry point, using React Router to render the HeroSection and ResearchTasksList components.
+- HeroSection displays a hero header section with loading state while fetching tasks. 
+- ResearchTasksList fetches an initial list of research tasks from the server and renders them in a grid layout.
+- TaskDetails component is used for displaying individual task details when a task is clicked.
+
+The components are styled using CSS modules, with responsive breakpoints for mobile devices. The hero section uses a gradient background. 
+
+Let me know if you would like me to modify or expand this frontend structure further! I'm happy to refine it based on the existing codebase and requirements.
